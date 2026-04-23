@@ -1,8 +1,8 @@
 # This file contains functions related to reading, writing and displaying a grid and experimental results
 
-using JuMP
-using Plots
-import GR
+# using JuMP
+# using Plots
+# import GR
 
 """
 Read an instance from an input file
@@ -12,22 +12,35 @@ inputFile: path of the input file
 """
 function readInputFile(inputFile::String)
 
-    # Open the input file
+    # Open file
     datafile = open(inputFile)
-
-    data = readlines(datafile)
+    lines = readlines(datafile)
     close(datafile)
 
-    # For each line of the input file
-    for line in data
+    # Dimensions
+    n = length(lines)
+    m = length(split(lines[1], ","))
 
-        # TODO
-        println("In file io.jl, in method readInputFile(), TODO: read a line of the input file")
+    # Grid (use -1 for empty cells)
+    grid = Array{Int64}(undef, n, m)
 
+    # Parse file
+    for i in 1:n
+        lineSplit = split(lines[i], ",")
+
+        for j in 1:m
+            val = strip(lineSplit[j])
+
+            if val == ""   # empty cell
+                grid[i, j] = -1
+            else
+                grid[i, j] = parse(Int64, val)
+            end
+        end
     end
 
+    return grid
 end
-
 
 """
 Create a pdf file which contains a performance diagram associated to the results of the ../res folder
