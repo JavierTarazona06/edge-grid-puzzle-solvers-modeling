@@ -1,8 +1,6 @@
 # edge-grid-puzzle-solvers-modeling
 
-Julia and LaTeX project for modeling and comparing exact and heuristic solvers for grid-based puzzle families in the ENSTA course
-
-project.
+Julia and LaTeX project for modeling and comparing exact and heuristic solvers for grid-based puzzle families in the ENSTA course project.
 
 ## Links
 
