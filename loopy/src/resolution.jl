@@ -8,25 +8,99 @@ TOL = 0.00001
 """
 Solve an instance with CPLEX
 """
-function cplexSolve()
+using JuMP
+using CPLEX
+
+function cplexSolve(t::Matrix{Int64})
+
+    nbRows = size(t, 1)
+    nbCols = size(t, 2)
 
     # Create the model
-    m = Model(with_optimizer(CPLEX.Optimizer))
+    m = Model(CPLEX.Optimizer)
 
-    # TODO
-    println("In file resolution.jl, in method cplexSolve(), TODO: fix input and output, define the model")
+    # -----------------------------
+    # Variables
+    # -----------------------------
+    # h[i,j] = 1 si l'arête horizontale de la ligne i et colonne j est prise
+    # Il y a nbRows+1 lignes d'arêtes horizontales et nbCols colonnes
+    @variable(m, h[1:nbRows+1, 1:nbCols], Bin)
 
-    # Start a chronometer
+    # v[i,j] = 1 si l'arête verticale de la ligne i et colonne j est prise
+    # Il y a nbRows lignes d'arêtes verticales et nbCols+1 colonnes
+    @variable(m, v[1:nbRows, 1:nbCols+1], Bin)
+
+    # y[i,j] = 1 si le sommet (i,j) appartient à la boucle, 0 sinon
+    @variable(m, y[1:nbRows+1, 1:nbCols+1], Bin)
+
+    # -----------------------------
+    # Objective
+    # -----------------------------
+    # On cherche seulement une solution réalisable
+    @objective(m, Min, 0)
+
+    # -----------------------------
+    # Constraints on numbered cells
+    # -----------------------------
+    # Pour chaque case contenant un indice, la somme des 4 arêtes autour
+    # de la case doit être égale à cet indice
+    for i in 1:nbRows
+        for j in 1:nbCols
+            if t[i, j] != -1
+                @constraint(m,
+                    h[i, j] + h[i+1, j] + v[i, j] + v[i, j+1] == t[i, j]
+                )
+            end
+        end
+    end
+
+    # -----------------------------
+    # Constraints on vertices
+    # -----------------------------
+    # Chaque sommet doit avoir degré 0 ou 2
+    # Somme des arêtes incidentes = 2*y[i,j]
+    for i in 1:nbRows+1
+        for j in 1:nbCols+1
+
+            expr = 0
+
+            # arête horizontale à gauche du sommet
+            if j > 1
+                expr += h[i, j-1]
+            end
+
+            # arête horizontale à droite du sommet
+            if j <= nbCols
+                expr += h[i, j]
+            end
+
+            # arête verticale au-dessus du sommet
+            if i > 1
+                expr += v[i-1, j]
+            end
+
+            # arête verticale en-dessous du sommet
+            if i <= nbRows
+                expr += v[i, j]
+            end
+
+            @constraint(m, expr == 2 * y[i, j])
+        end
+    end
+
+    # -----------------------------
+    # Solve
+    # -----------------------------
     start = time()
-
-    # Solve the model
     optimize!(m)
+    solveTime = time() - start
 
-    # Return:
-    # 1 - true if an optimum is found
-    # 2 - the resolution time
-    return JuMP.primal_status(m) == JuMP.MathOptInterface.FEASIBLE_POINT, time() - start
-    
+    # -----------------------------
+    # Return
+    # -----------------------------
+    isFeasible = JuMP.primal_status(m) == MOI.FEASIBLE_POINT
+
+    return isFeasible, h, v, solveTime
 end
 
 """
