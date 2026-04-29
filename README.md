@@ -5,7 +5,7 @@ Julia and LaTeX project for modeling and comparing exact and heuristic solvers f
 ## Links
 
 - Project site: <https://javiertarazona06.github.io/edge-grid-puzzle-solvers-modeling/>
-There you can find the report of the project,
+There you can find the report of the project.
 
 ## Repository layout
 
