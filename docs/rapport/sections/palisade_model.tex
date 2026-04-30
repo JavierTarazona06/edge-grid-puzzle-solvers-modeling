@@ -1,0 +1,59 @@
+\section{Jeux palisade}
+
+Le problème \textit{Palisade} présente plusieurs points communs avec le 
+problème précédent de \textit{Loopy}, mais sa structure est plus riche. 
+On considère à nouveau un ensemble de cases formant une grille rectangulaire. 
+Cette fois, l'objectif n'est plus de construire une boucle, mais de partitionner la grille en régions connexes, 
+disjointes deux à deux et sans superposition.
+
+Chaque région possède une taille fixée, notée \(s\), correspondant au nombre de cases qui la composent. 
+Dans le cas général du problème \textit{Palisade}, on prend \(s = 5\). En parallèle, certaines cases portent un 
+indice numérique, comme dans \textit{Loopy}. Cet indice indique combien de côtés de la case considérée appartiennent 
+à une frontière entre deux régions. Autrement dit, pour chaque case numérotée, le nombre inscrit correspond au nombre 
+d'arêtes de son contour qui délimitent une région de \textit{Palisade}. Comme une case carrée possède quatre côtés, 
+cet indice est nécessairement compris entre \(0\) et \(4\), pour un $s > 1$.
+
+\subsection{Modélisation}
+
+\subsubsection{Notations}
+
+On introduit les ensembles et paramètres suivants :
+
+\begin{itemize}
+    \item \(\mathcal{C}\) : ensemble des cases de la grille ;
+    \item \(\mathcal{A}\) : ensemble des paires de cases adjacentes par un côté ;
+    \item \(s\) : taille imposée de chaque région, avec \(s = 5\) dans le cas général ;
+    \item \(K = \card{\mathcal{C}}/s\) : nombre total de régions ;
+    \item \(\mathcal{P} = \{1, \dots, K\}\) : ensemble des identifiants de régions ;
+    \item \(\mathcal{Q} \subseteq \mathcal{C}\) : ensemble des cases contenant un indice ;
+    \item pour toute case \(c \in \mathcal{Q}\), \(a_c\) désigne la valeur inscrite dans la case \(c\) ;
+    \item pour toute case \(c \in \mathcal{C}\), \(\delta_c\) désigne le nombre de côtés de la case \(c\) situés sur le bord extérieur de la grille.
+\end{itemize}
+
+Les bords extérieurs de la grille sont toujours considérés comme des palissades.
+
+\subsubsection{Variables de décision}
+
+On introduit deux familles de variables binaires.
+
+\paragraph{Affectation des cases aux régions}
+
+Pour chaque case \(c \in \mathcal{C}\) et pour chaque région \(p \in \mathcal{P}\), on définit :
+\[
+x_{c,p} \in \binary
+\]
+telle que :
+\[
+x_{c,p} = 1 \iff \text{la case } c \text{ appartient à la région } p.
+\]
+
+\paragraph{Présence d'une palissade entre deux cases voisines}
+
+Pour chaque paire \(\{u,v\} \in \mathcal{A}\), on définit :
+\[
+y_{uv} \in \binary
+\]
+telle que :
+\[
+y_{uv} = 1 \iff \text{une palissade sépare les cases } u \text{ et } v.
+\]
