@@ -22,7 +22,8 @@ jobs:
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: docs/rapport/rapport.tex
+          root_file: rapport.tex
+          working_directory: docs/rapport
           work_in_root_file_dir: true
 
       - name: Prepare GitHub Pages site
@@ -36,7 +37,7 @@ jobs:
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>Rapport PDF</title>
+            <title>Edge Grid Puzzle Solvers Modeling</title>
             <style>
               :root {
                 color-scheme: light;
@@ -96,13 +97,15 @@ jobs:
           </head>
           <body>
             <main>
-              <h1>Rapport PDF</h1>
-              <p>The most recent version of the compiled document is available here.</p>
-              <a href="./rapport.pdf">Open PDF</a>
+              <h1>Edge Grid Puzzle Solvers Modeling</h1>
+              <h2>Projet du Graphes, Jeux et Recherche Opérationnelle, cours ENSTA 2026</h2>
+              <p>Open the generated project report PDF.</p>
+              <a href="./rapport.pdf?v=__REPORT_VERSION__">Open Report</a>
             </main>
           </body>
           </html>
           EOF
+          sed -i "s/__REPORT_VERSION__/${GITHUB_SHA}/g" site/index.html
 
       - name: Upload GitHub Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
