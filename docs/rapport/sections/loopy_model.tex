@@ -297,3 +297,43 @@ Ainsi, le modèle de base permet bien de résoudre l'instance test et de retourn
 \subsection{Remarque}
 
 Ce modèle garantit que les arêtes sélectionnées respectent les contraintes locales des cases et forment une union de cycles sans branchement. Toutefois, il n'impose pas encore que la solution soit une unique boucle. Cette contrainte sera traitée à l'aide d'un callback.
+
+\subsection{Traitement de la règle difficile par callback}
+
+La règle difficile du jeu \textit{Loopy} est l'unicité de la boucle. En effet, les contraintes du modèle de base imposent seulement que chaque sommet ait un degré égal à 0 ou 2. Elles garantissent donc l'absence de branchements, mais elles peuvent encore autoriser plusieurs cycles disjoints.
+
+Afin de corriger ce problème, nous utilisons un callback CPLEX. À chaque fois que CPLEX trouve une solution entière, le callback récupère les arêtes sélectionnées, reconstruit les composantes connexes formées par ces arêtes, puis vérifie si plusieurs cycles sont présents.
+
+Si plusieurs composantes sont détectées, alors la solution ne respecte pas la règle du jeu. Pour chaque sous-boucle \(C\), on ajoute dynamiquement la contrainte suivante :
+\[
+\sum_{e \in C} x_e \leq |C|-1.
+\]
+
+Cette contrainte interdit à la même sous-boucle de réapparaître dans une solution future. Ainsi, CPLEX poursuit la résolution jusqu'à trouver une solution constituée d'une seule boucle.
+
+Le callback suit donc les étapes suivantes :
+\begin{enumerate}
+    \item récupérer la solution entière courante ;
+    \item identifier les arêtes sélectionnées ;
+    \item construire les composantes connexes ;
+    \item si plusieurs boucles sont présentes, ajouter une contrainte de coupe ;
+    \item continuer la résolution.
+\end{enumerate}
+
+\subsection{Test du callback}
+
+La méthode \texttt{cplexSolveWithCallback} a été testée sur l'instance \texttt{data/instanceTest.txt}. Le callback est bien activé par CPLEX, comme l'indique l'affichage :
+\begin{verbatim}
+CPXPARAM_Threads 1
+Generic callback
+\end{verbatim}
+
+La résolution retourne :
+\begin{verbatim}
+Solution trouvée : true
+Temps : 2.19 s
+\end{verbatim}
+
+Ainsi, le modèle avec callback permet de trouver une solution réalisable tout en prenant en compte la contrainte difficile d'unicité de la boucle.
+
+Cette approche évite d'ajouter dès le départ toutes les contraintes d'élimination de sous-boucles, qui seraient trop nombreuses.

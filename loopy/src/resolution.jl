@@ -105,6 +105,169 @@ function cplexSolve(t::Matrix{Int64})
 end
 
 """
+Solve an instance with CPLEX + Callback to add lazy constraints to eliminate subtours
+"""
+
+"""
+Check if the current point is an integer point (i.e. all variables are integer)
+"""
+function isIntegerPoint(cb_data::CPLEX.CallbackContext, context_id::Clong)
+
+    if context_id != CPX_CALLBACKCONTEXT_CANDIDATE
+        return false
+    end
+
+    ispoint_p = Ref{Cint}()
+    ret = CPXcallbackcandidateispoint(cb_data, ispoint_p)
+
+    return ret == 0 && ispoint_p[] != 0
+end
+
+function cplexSolveWithCallback(t::Matrix{Int64})
+
+    nbRows = size(t, 1)
+    nbCols = size(t, 2)
+
+    m = Model(CPLEX.Optimizer)
+
+    @variable(m, h[1:nbRows+1, 1:nbCols], Bin)
+    @variable(m, v[1:nbRows, 1:nbCols+1], Bin)
+    @variable(m, y[1:nbRows+1, 1:nbCols+1], Bin)
+
+    @objective(m, Min, 0)
+
+    for i in 1:nbRows
+        for j in 1:nbCols
+            if t[i, j] != -1
+                @constraint(m, h[i,j] + h[i+1,j] + v[i,j] + v[i,j+1] == t[i,j])
+            end
+        end
+    end
+
+    for i in 1:nbRows+1
+        for j in 1:nbCols+1
+            expr = 0
+            if j > 1
+                expr += h[i,j-1]
+            end
+            if j <= nbCols
+                expr += h[i,j]
+            end
+            if i > 1
+                expr += v[i-1,j]
+            end
+            if i <= nbRows
+                expr += v[i,j]
+            end
+            @constraint(m, expr == 2y[i,j])
+        end
+    end
+
+    function callback_loopy(cb_data::CPLEX.CallbackContext, context_id::Clong)
+
+        if isIntegerPoint(cb_data, context_id)
+
+            CPLEX.load_callback_variable_primal(cb_data, context_id)
+
+            h_val = callback_value.(cb_data, h)
+            v_val = callback_value.(cb_data, v)
+
+            edges = Tuple{Symbol,Int,Int}[]
+            endpoints = Dict{Tuple{Symbol,Int,Int}, Tuple{Tuple{Int,Int},Tuple{Int,Int}}}()
+
+            for i in 1:nbRows+1, j in 1:nbCols
+                if h_val[i,j] > 0.5
+                    e = (:h, i, j)
+                    push!(edges, e)
+                    endpoints[e] = ((i,j), (i,j+1))
+                end
+            end
+
+            for i in 1:nbRows, j in 1:nbCols+1
+                if v_val[i,j] > 0.5
+                    e = (:v, i, j)
+                    push!(edges, e)
+                    endpoints[e] = ((i,j), (i+1,j))
+                end
+            end
+
+            vertexEdges = Dict{Tuple{Int,Int}, Vector{Tuple{Symbol,Int,Int}}}()
+
+            for e in edges
+                p1, p2 = endpoints[e]
+                push!(get!(vertexEdges, p1, Tuple{Symbol,Int,Int}[]), e)
+                push!(get!(vertexEdges, p2, Tuple{Symbol,Int,Int}[]), e)
+            end
+
+            visited = Set{Tuple{Symbol,Int,Int}}()
+            components = Vector{Vector{Tuple{Symbol,Int,Int}}}()
+
+            for e0 in edges
+                if e0 in visited
+                    continue
+                end
+
+                component = Tuple{Symbol,Int,Int}[]
+                stack = [e0]
+
+                while !isempty(stack)
+                    e = pop!(stack)
+
+                    if e in visited
+                        continue
+                    end
+
+                    push!(visited, e)
+                    push!(component, e)
+
+                    p1, p2 = endpoints[e]
+
+                    for p in (p1, p2)
+                        for e2 in vertexEdges[p]
+                            if !(e2 in visited)
+                                push!(stack, e2)
+                            end
+                        end
+                    end
+                end
+
+                push!(components, component)
+            end
+
+            if length(components) > 1
+                for component in components
+
+                    vars = []
+
+                    for e in component
+                        if e[1] == :h
+                            push!(vars, h[e[2], e[3]])
+                        else
+                            push!(vars, v[e[2], e[3]])
+                        end
+                    end
+
+                    cstr = @build_constraint(sum(vars) <= length(component) - 1)
+                    MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
+                end
+            end
+        end
+    end
+
+    MOI.set(m, MOI.NumberOfThreads(), 1)
+    MOI.set(m, CPLEX.CallbackFunction(), callback_loopy)
+
+    start = time()
+    optimize!(m)
+    solveTime = time() - start
+
+    isFeasible = JuMP.primal_status(m) == MOI.FEASIBLE_POINT
+
+    return isFeasible, solveTime, h, v
+end
+
+
+"""
 Heuristically solve an instance
 """
 function heuristicSolve()
