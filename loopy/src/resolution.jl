@@ -1,5 +1,7 @@
 # This file contains methods to solve an instance (heuristically or with CPLEX)
 using CPLEX
+using JuMP
+using CPLEX
 
 include("generation.jl")
 
@@ -8,8 +10,7 @@ TOL = 0.00001
 """
 Solve an instance with CPLEX
 """
-using JuMP
-using CPLEX
+
 
 function cplexSolve(t::Matrix{Int64})
 
@@ -100,7 +101,7 @@ function cplexSolve(t::Matrix{Int64})
     # -----------------------------
     isFeasible = JuMP.primal_status(m) == MOI.FEASIBLE_POINT
 
-    return isFeasible, h, v, solveTime
+    return isFeasible, solveTime, h, v
 end
 
 """

@@ -237,3 +237,63 @@ readInputFile("./data/instanceTest.txt")
 \end{verbatim}
 
 Elle retourne une matrice d'entiers représentant la grille de l’instance.
+
+\section{Implémentation du modèle}
+
+\subsection{Méthode \texttt{cplexSolve}}
+
+Le modèle est implémenté à l'aide du solveur CPLEX via la bibliothèque \texttt{JuMP}. La méthode \texttt{cplexSolve} prend en entrée une matrice représentant la grille du jeu et retourne :
+\begin{itemize}
+    \item un booléen indiquant si une solution réalisable est trouvée ;
+    \item le temps de résolution ;
+    \item les variables représentant la solution, c'est-à-dire les arêtes horizontales et verticales sélectionnées.
+\end{itemize}
+
+\subsection{Variables}
+
+Pour une grille de taille \(n \times m\), on introduit :
+\begin{itemize}
+    \item \(h_{i,j} \in \{0,1\}\) : vaut 1 si l'arête horizontale \((i,j)\) est sélectionnée ;
+    \item \(v_{i,j} \in \{0,1\}\) : vaut 1 si l'arête verticale \((i,j)\) est sélectionnée ;
+    \item \(y_{i,j} \in \{0,1\}\) : vaut 1 si le sommet \((i,j)\) appartient à la boucle.
+\end{itemize}
+
+\subsection{Fonction objectif}
+
+On cherche uniquement une solution réalisable :
+\[
+\min 0
+\]
+
+\subsection{Contraintes}
+
+\paragraph{Contraintes sur les cases}
+Pour chaque case numérotée \((i,j)\), la somme des quatre arêtes qui l'entourent doit être égale à l'indice de la case :
+\[
+h_{i,j} + h_{i+1,j} + v_{i,j} + v_{i,j+1} = t_{i,j}.
+\]
+
+\paragraph{Contraintes sur les sommets}
+Chaque sommet doit avoir un degré égal à 0 ou 2 :
+\[
+\sum_{e \in \delta(i,j)} x_e = 2y_{i,j}.
+\]
+
+\subsection{Test de la méthode}
+
+La méthode a été testée sur l'instance \texttt{data/instanceTest.txt}. Après lecture de l'instance par la méthode \texttt{readInputFile}, la commande suivante a été exécutée :
+\begin{verbatim}
+isFeasible, solveTime, h, v = cplexSolve(grid)
+\end{verbatim}
+
+Le solveur CPLEX trouve une solution réalisable :
+\begin{verbatim}
+Solution trouvée : true
+Temps : 0.013 s
+\end{verbatim}
+
+Ainsi, le modèle de base permet bien de résoudre l'instance test et de retourner les variables représentant les arêtes horizontales et verticales de la solution.
+
+\subsection{Remarque}
+
+Ce modèle garantit que les arêtes sélectionnées respectent les contraintes locales des cases et forment une union de cycles sans branchement. Toutefois, il n'impose pas encore que la solution soit une unique boucle. Cette contrainte sera traitée à l'aide d'un callback.
