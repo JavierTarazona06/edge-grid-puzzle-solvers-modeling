@@ -337,3 +337,27 @@ Temps : 2.19 s
 Ainsi, le modèle avec callback permet de trouver une solution réalisable tout en prenant en compte la contrainte difficile d'unicité de la boucle.
 
 Cette approche évite d'ajouter dès le départ toutes les contraintes d'élimination de sous-boucles, qui seraient trop nombreuses.
+
+\section{Affichage en ligne de commande}
+
+Deux méthodes ont été ajoutées dans le fichier \texttt{io.jl} afin d'afficher une instance et une solution du jeu \textit{Loopy} directement dans la console.
+
+La méthode \texttt{displayGrid} affiche l'instance non résolue, en remplaçant les cases vides par un point. La méthode \texttt{displaySolution} affiche ensuite la solution obtenue à partir des variables d'arêtes horizontales et verticales retournées par CPLEX.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.42\textwidth}
+        \centering
+        \includegraphics[width=\linewidth,height=4.5cm,keepaspectratio]{imgs/loopy_instance.png}
+        \\
+        \small Instance
+    \end{minipage}
+    \hspace{0.05\textwidth}
+    \begin{minipage}{0.42\textwidth}
+        \centering
+        \includegraphics[width=\linewidth,height=4.5cm,keepaspectratio]{imgs/loopy_solution.png}
+        \\
+        \small Solution
+    \end{minipage}
+    \caption{Affichage en ligne de commande de l’instance et de la solution \textit{Loopy}.}
+\end{figure}
