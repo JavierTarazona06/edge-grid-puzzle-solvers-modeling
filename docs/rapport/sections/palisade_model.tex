@@ -34,9 +34,10 @@ Les bords extérieurs de la grille sont toujours considérés comme des palissad
 
 \subsubsection{Variables de décision}
 
-On introduit deux familles de variables binaires.
+On introduit plusieurs familles de variables binaires.
 
 \paragraph{Affectation des cases aux régions}
+\mbox{}\\
 
 Pour chaque case \(c \in \mathcal{C}\) et pour chaque région \(p \in \mathcal{P}\), on définit :
 \[
@@ -48,6 +49,7 @@ x_{c,p} = 1 \iff \text{la case } c \text{ appartient à la région } p.
 \]
 
 \paragraph{Présence d'une palissade entre deux cases voisines}
+\mbox{}\\
 
 Pour chaque paire \(\{u,v\} \in \mathcal{A}\), on définit :
 \[
@@ -57,3 +59,76 @@ telle que :
 \[
 y_{uv} = 1 \iff \text{une palissade sépare les cases } u \text{ et } v.
 \]
+
+Il est également nécessaire d'introduire une variable auxiliaire. Même si elle ne fait pas directement partie de la solution recherchée, elle permet d'écrire linéairement certaines relations entre les variables précédentes.
+
+\paragraph{Variables auxiliaires pour détecter si deux cases voisines sont dans la même région}
+\mbox{}\\
+
+Pour chaque paire \(\{u,v\} \in \mathcal{A}\) et pour chaque région \(p \in \mathcal{P}\), on introduit :
+\[
+z_{uv,p} \in \binary
+\]
+telle que :
+\[
+z_{uv,p} = 1 \iff u \text{ et } v \text{ sont adjacentes et appartiennent toutes deux à la région } p.
+\]
+
+
+\subsubsection{Fonction objectif}
+
+Comme dans le problème \textit{Loopy}, il s'agit uniquement de trouver une solution réalisable. On choisit donc une fonction objectif constante :
+\[
+\min 0
+\]
+
+
+\subsubsection{Contraintes}
+
+Les deux premières contraintes sont des contraintes de base. La première traduit le fait que chaque case doit appartenir à une unique région. La seconde compte le nombre de cases affectées à chaque région ; cette somme doit alors être égale à la taille imposée \(s\).
+
+\paragraph{Chaque case appartient à une seule région}
+\mbox{}\\
+
+Pour toute case \(c \in \mathcal{C}\), on impose :
+\[
+\sum_{p \in \mathcal{P}} x_{c,p} = 1
+\qquad \forall c \in \mathcal{C}
+\]
+
+\paragraph{Chaque région contient exactement \(s\) cases}
+\mbox{}\\
+
+Pour toute région \(p \in \mathcal{P}\), on impose :
+\[
+\sum_{c \in \mathcal{C}} x_{c,p} = s
+\qquad \forall p \in \mathcal{P}
+\]
+
+\paragraph{Linéarisation de l'appartenance simultanée à une même région}
+\mbox{}\\
+
+Pour chaque paire adjacente \(\{u,v\} \in \mathcal{A}\) et pour chaque région \(p \in \mathcal{P}\), on impose :
+
+\[
+z_{uv,p} \leq x_{u,p}
+\qquad \forall \{u,v\} \in \mathcal{A},\; \forall p \in \mathcal{P}
+\]
+
+Cette première contrainte signifie que si la case \(u\) n'appartient pas à la région \(p\), alors la variable \(z_{uv,p}\) ne peut pas valoir \(1\). Autrement dit, la paire de cases adjacentes \(\{u,v\}\) ne peut pas être comptée dans la région \(p\) si \(u\) n'y appartient pas.
+
+\[
+z_{uv,p} \leq x_{v,p}
+\qquad \forall \{u,v\} \in \mathcal{A},\; \forall p \in \mathcal{P}
+\]
+
+De la même manière, cette deuxième contrainte exprime le même raisonnement du point de vue de la case \(v\). Si \(v\) n'appartient pas à la région \(p\), alors \(z_{uv,p}\) doit être nul.
+
+\[
+z_{uv,p} \geq x_{u,p} + x_{v,p} - 1
+\qquad \forall \{u,v\} \in \mathcal{A},\; \forall p \in \mathcal{P}
+\]
+
+Enfin, cette troisième contrainte force \(z_{uv,p}\) à valoir \(1\) lorsque les deux cases \(u\) et \(v\) appartiennent simultanément à la région \(p\). En effet, si aucune des deux cases n'appartient à \(p\), alors le membre de droite vaut \(-1\), ce qui ne crée aucune contrainte supplémentaire. Si une seule des deux cases appartient à \(p\), alors le membre de droite vaut \(0\), et \(z_{uv,p}\) peut seulement rester nul. En revanche, si les deux cases appartiennent à la région \(p\), alors le membre de droite vaut \(1\), ce qui impose \(z_{uv,p} = 1\).
+
+Ainsi, \(z_{uv,p} = 1\) si et seulement si les deux cases adjacentes \(u\) et \(v\) appartiennent à la même région \(p\).
