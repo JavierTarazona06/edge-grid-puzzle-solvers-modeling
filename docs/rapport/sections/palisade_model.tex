@@ -164,8 +164,11 @@ où :
 
 La difficulté principale du problème consiste à imposer que chaque région soit connexe. Pour modéliser cela, on suppose qu'un flot doit circuler dans chaque région à partir d'une case racine.
 
-\paragraph{Choix d'une racine par région}
-\mbox{}\\
+\par
+\begin{adjustwidth}{1.5em}{}
+
+\noindent\textbf{Choix d'une racine par région}
+\par
 
 Pour chaque case \(c \in \mathcal{C}\) et chaque région \(p \in \mathcal{P}\), on introduit :
 \[
@@ -189,8 +192,9 @@ r_{c,p} \leq x_{c,p}
 
 Ainsi, chaque région possède exactement une racine, qui doit appartenir à cette région. La seconde contrainte signifie donc qu'une case ne peut être choisie comme racine de la région \(p\) que si elle appartient effectivement à cette région.
 
-\paragraph{Variables de flot}
-\mbox{}\\
+\par
+\noindent\textbf{Variables de flot}
+\par
 
 Pour chaque région \(p \in \mathcal{P}\) et pour chaque arc orienté \((u,v)\) associé à une adjacency \(\{u,v\} \in \mathcal{A}\), on introduit une variable continue :
 \[
@@ -199,8 +203,9 @@ f^{p}_{uv} \geq 0
 
 Cette variable représente la quantité de flot envoyée de \(u\) vers \(v\) dans la région \(p\).
 
-\paragraph{Le flot ne circule qu'à l'intérieur d'une région}
-\mbox{}\\
+\par
+\noindent\textbf{Le flot ne circule qu'à l'intérieur d'une région}
+\par
 
 On impose :
 \[
@@ -226,8 +231,9 @@ Ces inégalités signifient que si l'arc \((u,v)\) appartient à la région \(p\
 
 On rappelle également que sur un arc correspondant à une palissade, le flot est nécessairement nul. En effet, si \(u\) et \(v\) appartiennent à deux régions différentes, alors pour une région \(p\) fixée, l'une des deux variables \(x_{u,p}\) ou \(x_{v,p}\) vaut \(0\). L'une des deux contraintes précédentes impose donc \(f^{p}_{uv} \leq 0\). Comme on a déjà défini \(f^{p}_{uv} \geq 0\), on obtient finalement \(f^{p}_{uv} = 0\).
 
-\paragraph{Conservation du flot}
-\mbox{}\\
+\par
+\noindent\textbf{Conservation du flot}
+\par
 
 Pour finir, il faut imposer que le flot se conserve à l'intérieur de chaque région. Pour chaque case \(c \in \mathcal{C}\) et chaque région \(p \in \mathcal{P}\), on impose :
 \[
@@ -258,6 +264,7 @@ L'interprétation que l'on peut en faire est la suivante :
 
 Cette formulation garantit que toutes les cases d'une même région sont atteignables depuis la racine, donc que la région est connexe.
 
+\end{adjustwidth}
 
 \subsubsection{Fonction objectif}
 
@@ -301,3 +308,85 @@ f^{p}_{uv} \geq 0
 \]
 
 Cette formulation permet donc de modéliser le jeu \textit{Palisade} comme un programme linéaire en nombres entiers.
+
+\subsection{Traitement de la règle difficile par callback}
+
+\subsubsection{Pourquoi utiliser un callback ?}
+
+La règle difficile du problème \textit{Palisade} est la connexité des régions. La formulation par flot présentée plus haut permet de l'imposer exactement, mais elle alourdit fortement le modèle lorsque la grille devient grande.
+
+Posons \(N = \card{\mathcal{C}}\) le nombre total de cases et \(K = N/s\) le nombre de régions. La partie dédiée à la connexité ajoute alors :
+\begin{itemize}
+    \item \(\card{\mathcal{C}} \times K = NK\) variables binaires \(r_{c,p}\) pour le choix des racines ;
+    \item \(2\card{\mathcal{A}} \times K\) variables continues \(f^p_{uv}\) pour les flots sur les arcs orientés ;
+    \item \(K + NK + 4\card{\mathcal{A}}K + NK\) contraintes supplémentaires pour le choix des racines, les bornes sur le flot et la conservation du flot.
+\end{itemize}
+
+Ici, \(\mathcal{A}\) désigne l'ensemble des paires de cases adjacentes par un côté. Ainsi, \(\card{\mathcal{A}}\) compte le nombre total de voisinages dans la grille, c'est-à-dire le nombre de paires \(\{u,v\}\) de cases qui partagent une arête.
+
+Le terme
+\[
+K + NK + 4\card{\mathcal{A}}K + NK
+\]
+provient alors directement du détail des contraintes de connexité :
+\begin{itemize}
+    \item \(K\) contraintes pour imposer qu'il y ait exactement une racine par région :
+    \[
+    \sum_{c \in \mathcal{C}} r_{c,p} = 1
+    \qquad \forall p \in \mathcal{P} ;
+    \]
+    \item \(NK\) contraintes pour imposer qu'une racine appartienne bien à sa région :
+    \[
+    r_{c,p} \leq x_{c,p}
+    \qquad \forall c \in \mathcal{C},\; \forall p \in \mathcal{P} ;
+    \]
+    \item \(4\card{\mathcal{A}}K\) contraintes pour borner le flot sur les arcs orientés : pour chaque paire adjacente, on considère deux orientations possibles \((u,v)\) et \((v,u)\), et pour chacune de ces orientations on écrit deux bornes, l'une avec \(x_{u,p}\) et l'autre avec \(x_{v,p}\) ;
+    \item enfin, \(NK\) contraintes de conservation du flot, une pour chaque case \(c\) et chaque région \(p\).
+\end{itemize}
+
+Or, dans une grille rectangulaire, on a \(\card{\mathcal{A}} = O(N)\). En effet, si la grille possède \(n\) lignes et \(m\) colonnes, alors \(N = nm\), tandis que le nombre de paires adjacentes vaut
+\[
+n(m-1) + m(n-1) = 2nm - n - m.
+\]
+Cette quantité est donc linéaire en \(nm\), c'est-à-dire en \(N\). Comme \(K = N/s\) et que \(s\) est fixé dans le problème, le nombre de variables et de contraintes supplémentaires est de l'ordre de
+\[
+O\big((\card{\mathcal{A}} + \card{\mathcal{C}})K\big) = O(N^2).
+\]
+
+Autrement dit, la taille du modèle croît quadratiquement avec le nombre de cases dès que l'on ajoute la connexité par flot. Cette augmentation se répercute à la fois sur l'espace mémoire nécessaire et sur le temps de résolution, car chaque n\oe ud du \textit{branch-and-bound} doit manipuler une relaxation linéaire plus grande.
+
+Pour de petites ou moyennes instances, cette formulation reste tout à fait exploitable. En revanche, pour des grilles plus grandes, il est souvent plus efficace de conserver un modèle de base plus léger et de traiter la connexité dynamiquement par \textit{callback}.
+
+\subsubsection{Principe du callback}
+
+L'idée est de ne pas introduire dès le départ toutes les contraintes de flot. On résout d'abord le modèle de base contenant les contraintes d'affectation, de taille des régions, de palissades et d'indices. Lorsqu'une solution entière candidate est trouvée, on vérifie alors si chaque région est connexe.
+
+Pour une région fixée \(p\), on considère l'ensemble des cases telles que \(x_{c,p} = 1\), puis on reconstruit le sous-graphe d'adjacence correspondant. Si ce sous-graphe n'est pas connexe, on choisit une composante connexe stricte non vide \(W \subset \mathcal{C}\) de cette région et on ajoute une contrainte qui interdit cette configuration déconnectée.
+
+On peut par exemple utiliser la coupe suivante :
+\[
+\sum_{c \in W} x_{c,p}
+\leq
+\card{W} - 1 + \sum_{\{u,v\} \in B(W)} z_{uv,p},
+\]
+où \(B(W)\) désigne l'ensemble des paires de cases adjacentes ayant une extrémité dans \(W\) et l'autre dans \(\mathcal{C} \setminus W\).
+
+Cette contrainte s'interprète simplement. Si toutes les cases de \(W\) sont affectées à la région \(p\) mais qu'aucune arête de bord entre \(W\) et le reste de la grille ne relie encore \(W\) à une autre case de la même région, alors
+\[
+\sum_{\{u,v\} \in B(W)} z_{uv,p} = 0,
+\]
+et la contrainte devient
+\[
+\sum_{c \in W} x_{c,p} \leq \card{W} - 1,
+\]
+ce qui interdit précisément cette composante isolée. En revanche, dès qu'au moins une liaison de même région existe sur le bord de \(W\), la coupe est satisfaite.
+
+Le \textit{callback} consiste donc à répéter les étapes suivantes :
+\begin{enumerate}
+    \item résoudre le modèle de base ;
+    \item détecter les régions déconnectées dans la solution entière candidate ;
+    \item ajouter une coupe de connexité pour chaque composante interdite ;
+    \item relancer la recherche jusqu'à obtenir une solution où toutes les régions sont connexes.
+\end{enumerate}
+
+Il ne s'agit pas d'une heuristique, mais bien d'une manière exacte de traiter la contrainte difficile. La différence est que les contraintes de connexité ne sont ajoutées que lorsqu'elles deviennent nécessaires, ce qui permet en pratique de garder un modèle initial plus compact.

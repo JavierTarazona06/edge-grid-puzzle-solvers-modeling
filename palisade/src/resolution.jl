@@ -11,6 +11,7 @@ Solve an instance with CPLEX
 """
 function cplexSolve(t::Matrix{Int64})
 
+
     nbRows = size(t, 1)
     nbCols = size(t, 2)
     regionSize = 5
@@ -148,7 +149,7 @@ function cplexSolve(t::Matrix{Int64})
     # Return:
     # 1 - true if an optimum is found
     # 2 - the resolution time
-    return JuMP.primal_status(m) == JuMP.MathOptInterface.FEASIBLE_POINT, x, yh, yv, time() - start
+    return JuMP.is_solved_and_feasible(m), x, yh, yv, time() - start
     
 end
 

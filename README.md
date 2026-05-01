@@ -153,6 +153,70 @@ cd palisade
 julia --project=. -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); readInputFile("../data/instanceTest.txt")'
 ```
 
+### Run CPLEX on Fixed Instance
+
+To run `cplexSolve(t::Matrix{Int64})` from `palisade/src/resolution.jl` on `palisade/data/instanceTest.txt`:
+
+1. Go to the `palisade` directory:
+
+```bash
+cd palisade
+```
+
+2. Start Julia with the Palisade environment:
+
+```bash
+julia --project=.
+```
+
+3. Instantiate the environment if needed:
+
+```julia
+using Pkg
+Pkg.instantiate()
+```
+
+4. Go to the `src` directory inside Julia:
+
+```julia
+cd("src")
+```
+
+5. Load the files and solve the fixed instance:
+
+```julia
+include("io.jl")
+include("resolution.jl")
+t = readInputFile("../data/instanceTest.txt")
+isOptimal, x, yh, yv, solveTime = cplexSolve(t)
+```
+
+You can also run steps 1 to 5 in one command and keep the variables available in the Julia session:
+
+```bash
+cd palisade && julia --project=. -i -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); include("resolution.jl"); global t = readInputFile("../data/instanceTest.txt"); global isOptimal, x, yh, yv, solveTime = cplexSolve(t)'
+```
+
+6. Display the main result values:
+
+```julia
+println("isOptimal = ", isOptimal)
+println("solveTime = ", solveTime)
+println("yh = ")
+println(JuMP.value.(yh))
+println("yv = ")
+println(JuMP.value.(yv))
+```
+
+You can also inspect the region-assignment variables:
+
+```julia
+println("x[:,:,1] = ")
+println(JuMP.value.(x[:, :, 1]))
+```
+
+This requires a working local CPLEX installation and license.
+
 The same activation pattern applies to `loopy/` and `sudoku1.0/`.
 
 ## Notes for contributors
