@@ -2,6 +2,16 @@
 
 Julia and LaTeX project for modeling and comparing exact and heuristic solvers for grid-based puzzle families in the ENSTA course project.
 
+## Table of contents
+
+- [Links](#links)
+- [Repository layout](#repository-layout)
+- [Requirements](#requirements)
+- [Julia environments](#julia-environments)
+- [Quick start](#quick-start)
+- [Run Julia for Palisade](#run-julia-for-palisade)
+- [Notes for contributors](#notes-for-contributors)
+
 ## Links
 
 - Project site: <https://javiertarazona06.github.io/edge-grid-puzzle-solvers-modeling/>
@@ -28,8 +38,34 @@ The Julia code relies on these packages:
 Additional notes:
 
 - `CPLEX` requires a local IBM CPLEX installation and a valid license.
-- The repository currently does not include a `Project.toml` or `Manifest.toml`, so dependencies must be installed in your Julia environment manually.
 - Building the report requires a LaTeX distribution capable of compiling `docs/rapport/rapport.tex`.
+
+## Julia environments
+
+The repository now includes Julia environments:
+
+- a root environment in `./Project.toml`
+- a dedicated environment in `palisade/Project.toml`
+- a dedicated environment in `loopy/Project.toml`
+- a dedicated environment in `sudoku1.0/Project.toml`
+
+To install the dependencies of one environment, activate it and instantiate it.
+
+Example for the `palisade/` project:
+
+```bash
+cd palisade
+julia --project=.
+```
+
+Inside the Julia REPL:
+
+```julia
+using Pkg
+Pkg.instantiate()
+```
+
+You can do the same in `loopy/`, `sudoku1.0/`, or at the repository root depending on which environment you want to use.
 
 ## Quick start
 
@@ -38,13 +74,16 @@ Additional notes:
 The `sudoku1.0/` folder is the best entry point if you want to run the existing code.
 
 ```bash
-cd sudoku1.0/src
-julia
+cd sudoku1.0
+julia --project=.
 ```
 
 Inside the Julia REPL:
 
 ```julia
+using Pkg
+Pkg.instantiate()
+cd("src")
 include("generation.jl")
 generateDataSet()
 ```
@@ -62,25 +101,63 @@ performanceDiagram("../res/array.pdf")
 
 Generated input instances are written to `sudoku1.0/data/`, and solver outputs are written to subdirectories inside `sudoku1.0/res/`.
 
-### Report build
+## Run Julia for Palisade
 
-To compile the report locally:
+Run Julia commands for the Palisade project from the `palisade/src` directory, because file paths in the current scaffold are written relative to that location.
+
+### Run Tests Fixed Instance
+
+To test `readInputFile` in `palisade/src/io.jl` with the instance file `palisade/data/instanceTest.txt`:
+
+1. Go to the `palisade` directory:
 
 ```bash
-cd docs/rapport
-latexmk -pdf rapport.tex
+cd palisade
 ```
 
-On GitHub, the workflow in `.github/workflows/latex.yml` automatically builds `docs/rapport/rapport.pdf` and publishes it through GitHub Pages.
+2. Start Julia with the Palisade environment:
 
-## Current project status
+```bash
+julia --project=.
+```
 
-- `sudoku1.0/` contains working code and sample data/results.
-- `loopy/` and `palisade/` are not yet feature-complete and should be treated as work-in-progress templates.
-- The report source exists, but the main document is still fairly minimal and appears to be under active development.
+3. Instantiate the environment if you have not done it yet:
+
+```julia
+using Pkg
+Pkg.instantiate()
+```
+
+4. Go to the `src` directory inside Julia:
+
+```julia
+cd("src")
+```
+
+5. Load the file:
+
+```julia
+include("io.jl")
+```
+
+6. Run the input-reading function:
+
+```julia
+readInputFile("../data/instanceTest.txt")
+```
+
+You can also run the same test in one shell command:
+
+```bash
+cd palisade
+julia --project=. -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); readInputFile("../data/instanceTest.txt")'
+```
+
+The same activation pattern applies to `loopy/` and `sudoku1.0/`.
 
 ## Notes for contributors
 
+- Activate the matching Julia environment before running code from `palisade/`, `loopy/`, or `sudoku1.0/`.
 - Run Julia scripts from each puzzle's `src/` directory because paths are written relative to that location.
 - Result folders such as `res/` contain generated artifacts rather than hand-written source files.
-- Editor backup files and generated result folders are partially covered by `.gitignore`, but dependency management has not yet been formalized with a Julia project environment.
+- Editor backup files and generated result folders are partially covered by `.gitignore`.
