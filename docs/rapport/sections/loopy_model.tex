@@ -361,3 +361,28 @@ La méthode \texttt{displayGrid} affiche l'instance non résolue, en remplaçant
     \end{minipage}
     \caption{Affichage en ligne de commande de l’instance et de la solution \textit{Loopy}.}
 \end{figure}
+
+\section{Génération d’instances}
+
+\subsection{Génération d’une instance}
+
+Une méthode \texttt{generateInstance} a été implémentée afin de générer des instances aléatoires du jeu \textit{Loopy}. Elle prend en paramètres la taille de la grille ainsi qu’une densité, représentant la probabilité qu’une case contienne un indice.
+
+Chaque case est soit vide (valeur \(-1\)), soit remplie par un entier aléatoire entre 0 et 3. Ce choix permet de générer des instances de difficulté variable, tout en évitant des configurations trop contraintes.
+
+\subsection{Génération d’un ensemble d’instances}
+
+La méthode \texttt{generateDataSet} permet de générer automatiquement plusieurs instances et de les enregistrer dans le répertoire \texttt{./data}.
+
+Afin d’analyser les performances du modèle, plusieurs tailles de grilles ont été considérées (par exemple \(4 \times 4\), \(5 \times 5\), \(6 \times 6\)), avec une densité fixée. Cela permet d’étudier l’impact de la taille sur le temps de résolution.
+
+\subsection{Analyse}
+
+Les instances générées ne garantissent pas l’existence ni l’unicité d’une solution, ce qui est conforme aux consignes du projet. Cela permet toutefois d’évaluer le comportement du solveur dans différents cas :
+\begin{itemize}
+    \item instances faciles, résolues rapidement ;
+    \item instances plus contraintes, nécessitant davantage de temps ;
+    \item instances éventuellement sans solution.
+\end{itemize}
+
+Cette approche permet d’observer l’influence de la taille et de la structure des instances sur les performances du modèle et du callback.
