@@ -132,3 +132,37 @@ z_{uv,p} \geq x_{u,p} + x_{v,p} - 1
 Enfin, cette troisième contrainte force \(z_{uv,p}\) à valoir \(1\) lorsque les deux cases \(u\) et \(v\) appartiennent simultanément à la région \(p\). En effet, si aucune des deux cases n'appartient à \(p\), alors le membre de droite vaut \(-1\), ce qui ne crée aucune contrainte supplémentaire. Si une seule des deux cases appartient à \(p\), alors le membre de droite vaut \(0\), et \(z_{uv,p}\) peut seulement rester nul. En revanche, si les deux cases appartiennent à la région \(p\), alors le membre de droite vaut \(1\), ce qui impose \(z_{uv,p} = 1\).
 
 Ainsi, \(z_{uv,p} = 1\) si et seulement si les deux cases adjacentes \(u\) et \(v\) appartiennent à la même région \(p\).
+
+\paragraph{Définition des palissades}
+\mbox{}\\
+
+Cette contrainte est directement liée à la modélisation précédente. Deux cas peuvent alors se présenter. Si les deux cases adjacentes appartiennent à la même région, il ne doit pas y avoir de palissade entre elles. En revanche, si les deux cases appartiennent à des régions différentes, alors une palissade doit nécessairement les séparer.
+
+On modélise cela par :
+\[
+y_{uv} + \sum_{p \in \mathcal{P}} z_{uv,p} = 1
+\qquad \forall \{u,v\} \in \mathcal{A}
+\]
+
+En effet :
+\begin{itemize}
+    \item si \(u\) et \(v\) sont dans la même région, alors \(\sum_{p \in \mathcal{P}} z_{uv,p} = 1\), donc \(y_{uv} = 0\) ;
+    \item sinon, \(\sum_{p \in \mathcal{P}} z_{uv,p} = 0\), donc \(y_{uv} = 1\).
+\end{itemize}
+
+\paragraph{Contraintes liées aux indices}
+\mbox{}\\
+
+Pour chaque case numérotée \(c \in \mathcal{Q}\), le nombre total de côtés portant une palissade doit être égal à l'indice inscrit.
+
+Si \(N(c)\) désigne l'ensemble des cases voisines de \(c\), alors :
+\[
+\delta_c + \sum_{v \in N(c)} y_{cv} = a_c
+\qquad \forall c \in \mathcal{Q}
+\]
+
+où :
+\begin{itemize}
+    \item \(\delta_c\) compte les côtés extérieurs de la grille, qui sont toujours des palissades ;
+    \item \(\sum_{v \in N(c)} y_{cv}\) compte les palissades internes autour de la case \(c\).
+\end{itemize}
