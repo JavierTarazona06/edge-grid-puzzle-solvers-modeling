@@ -42,6 +42,77 @@ function readInputFile(inputFile::String)
     return grid
 end
 
+
+function displayGrid(t::Matrix{Int64})
+
+    nbRows = size(t, 1)
+    nbCols = size(t, 2)
+
+    println("Instance Loopy :")
+
+    for i in 1:nbRows
+        for j in 1:nbCols
+            if t[i, j] == -1
+                print(" . ")
+            else
+                print(" ", t[i, j], " ")
+            end
+        end
+        println()
+    end
+end
+
+
+function displaySolution(h, v)
+
+    nbRows = size(v, 1)
+    nbCols = size(h, 2)
+
+    hVal = JuMP.value.(h)
+    vVal = JuMP.value.(v)
+
+    println("Solution Loopy :")
+
+    for i in 1:nbRows
+
+        # Ligne horizontale supérieure
+        for j in 1:nbCols
+            print("+")
+            if hVal[i, j] > 0.5
+                print("---")
+            else
+                print("   ")
+            end
+        end
+        println("+")
+
+        # Ligne verticale
+        for j in 1:nbCols+1
+            if vVal[i, j] > 0.5
+                print("|")
+            else
+                print(" ")
+            end
+
+            if j <= nbCols
+                print("   ")
+            end
+        end
+        println()
+    end
+
+    # Dernière ligne horizontale
+    for j in 1:nbCols
+        print("+")
+        if hVal[nbRows+1, j] > 0.5
+            print("---")
+        else
+            print("   ")
+        end
+    end
+    println("+")
+end
+
 """
 Create a pdf file which contains a performance diagram associated to the results of the ../res folder
 Display one curve for each subfolder of the ../res folder.
