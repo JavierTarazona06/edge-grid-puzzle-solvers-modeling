@@ -75,14 +75,6 @@ z_{uv,p} = 1 \iff u \text{ et } v \text{ sont adjacentes et appartiennent toutes
 \]
 
 
-\subsubsection{Fonction objectif}
-
-Comme dans le problème \textit{Loopy}, il s'agit uniquement de trouver une solution réalisable. On choisit donc une fonction objectif constante :
-\[
-\min 0
-\]
-
-
 \subsubsection{Contraintes}
 
 Les deux premières contraintes sont des contraintes de base. La première traduit le fait que chaque case doit appartenir à une unique région. La seconde compte le nombre de cases affectées à chaque région ; cette somme doit alors être égale à la taille imposée \(s\).
@@ -166,3 +158,146 @@ où :
     \item \(\delta_c\) compte les côtés extérieurs de la grille, qui sont toujours des palissades ;
     \item \(\sum_{v \in N(c)} y_{cv}\) compte les palissades internes autour de la case \(c\).
 \end{itemize}
+
+\paragraph{Contrainte difficile : connexité des régions}
+\mbox{}\\
+
+La difficulté principale du problème consiste à imposer que chaque région soit connexe. Pour modéliser cela, on suppose qu'un flot doit circuler dans chaque région à partir d'une case racine.
+
+\paragraph{Choix d'une racine par région}
+\mbox{}\\
+
+Pour chaque case \(c \in \mathcal{C}\) et chaque région \(p \in \mathcal{P}\), on introduit :
+\[
+r_{c,p} \in \binary
+\]
+avec :
+\[
+r_{c,p} = 1 \iff \text{la case } c \text{ est choisie comme racine de la région } p.
+\]
+
+On impose ensuite :
+\[
+\sum_{c \in \mathcal{C}} r_{c,p} = 1
+\qquad \forall p \in \mathcal{P}
+\]
+
+\[
+r_{c,p} \leq x_{c,p}
+\qquad \forall c \in \mathcal{C},\; \forall p \in \mathcal{P}
+\]
+
+Ainsi, chaque région possède exactement une racine, qui doit appartenir à cette région. La seconde contrainte signifie donc qu'une case ne peut être choisie comme racine de la région \(p\) que si elle appartient effectivement à cette région.
+
+\paragraph{Variables de flot}
+\mbox{}\\
+
+Pour chaque région \(p \in \mathcal{P}\) et pour chaque arc orienté \((u,v)\) associé à une adjacency \(\{u,v\} \in \mathcal{A}\), on introduit une variable continue :
+\[
+f^{p}_{uv} \geq 0
+\]
+
+Cette variable représente la quantité de flot envoyée de \(u\) vers \(v\) dans la région \(p\).
+
+\paragraph{Le flot ne circule qu'à l'intérieur d'une région}
+\mbox{}\\
+
+On impose :
+\[
+f^{p}_{uv} \leq (s-1)x_{u,p}
+\qquad \forall (u,v),\; \forall p \in \mathcal{P}
+\]
+\[
+f^{p}_{uv} \leq (s-1)x_{v,p}
+\qquad \forall (u,v),\; \forall p \in \mathcal{P}
+\]
+
+Dans le cas général d'exemple considéré ici, on prend \(s = 5\). Ces contraintes deviennent donc :
+\[
+f^{p}_{uv} \leq 4x_{u,p}
+\qquad \forall (u,v),\; \forall p \in \mathcal{P}
+\]
+\[
+f^{p}_{uv} \leq 4x_{v,p}
+\qquad \forall (u,v),\; \forall p \in \mathcal{P}
+\]
+
+Ces inégalités signifient que si l'arc \((u,v)\) appartient à la région \(p\), alors le flot qui y circule peut prendre une valeur comprise entre \(1\) et \(s-1\), selon la quantité de flot qu'il reste à transmettre. À l'intérieur d'une région de taille \(s\), la racine peut en effet envoyer au plus \(s-1\) unités, puis cette quantité décroît progressivement jusqu'à la dernière unité de flot.
+
+On rappelle également que sur un arc correspondant à une palissade, le flot est nécessairement nul. En effet, si \(u\) et \(v\) appartiennent à deux régions différentes, alors pour une région \(p\) fixée, l'une des deux variables \(x_{u,p}\) ou \(x_{v,p}\) vaut \(0\). L'une des deux contraintes précédentes impose donc \(f^{p}_{uv} \leq 0\). Comme on a déjà défini \(f^{p}_{uv} \geq 0\), on obtient finalement \(f^{p}_{uv} = 0\).
+
+\paragraph{Conservation du flot}
+\mbox{}\\
+
+Pour finir, il faut imposer que le flot se conserve à l'intérieur de chaque région. Pour chaque case \(c \in \mathcal{C}\) et chaque région \(p \in \mathcal{P}\), on impose :
+\[
+\sum_{u:(u,c)} f^{p}_{uc} - \sum_{v:(c,v)} f^{p}_{cv} = x_{c,p} - s\,r_{c,p}
+\qquad \forall c \in \mathcal{C},\; \forall p \in \mathcal{P}
+\]
+
+Dans le cas général d'exemple considéré ici, avec \(s = 5\), on obtient :
+\[
+\sum_{u:(u,c)} f^{p}_{uc} - \sum_{v:(c,v)} f^{p}_{cv} = x_{c,p} - 5r_{c,p}
+\qquad \forall c \in \mathcal{C},\; \forall p \in \mathcal{P}
+\]
+L'interprétation que l'on peut en faire est la suivante :
+
+\begin{itemize}
+    \item Si la case \(c\) appartient à la région \(p\) et n'est pas la racine, alors \(x_{c,p} = 1\) et \(r_{c,p} = 0\). Le membre de droite vaut donc \(1\), ce qui donne :
+    \[
+    \text{flux entrant} - \text{flux sortant} = 1
+    \]
+    La case doit donc recevoir une unité de flot.
+    \item Si la case \(c\) n'appartient pas à la région \(p\), alors \(x_{c,p} = 0\) et \(r_{c,p} = 0\). Le membre de droite vaut donc \(0\). Il n'y a alors aucun flot à conserver, et le bilan entre le flux entrant et le flux sortant est nul.
+    \item Si la case \(c\) appartient à la région \(p\) et qu'elle est la racine, alors \(x_{c,p} = 1\) et \(r_{c,p} = 1\). Le membre de droite vaut donc \(1-s\). Avec \(s=5\), on obtient :
+    \[
+    \text{flux entrant} - \text{flux sortant} = 1 - 5 = -4
+    \]
+    La racine doit donc envoyer \(s-1\) unités de flot aux autres cases de la région. Dans le cas \(s=5\), elle doit envoyer \(4\) unités.
+\end{itemize}
+
+Cette formulation garantit que toutes les cases d'une même région sont atteignables depuis la racine, donc que la région est connexe.
+
+
+\subsubsection{Fonction objectif}
+
+Comme dans le problème \textit{Loopy}, il s'agit uniquement de trouver une solution réalisable. On choisit donc une fonction objectif constante :
+\[
+\min 0
+\]
+
+\subsubsection{Résumé du modèle}
+
+Le modèle complet s'écrit donc :
+\[
+\min 0
+\]
+
+sous les contraintes :
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{>{$}X<{$} l}
+\sum_{p \in \mathcal{P}} x_{c,p} = 1 \qquad \forall c \in \mathcal{C} & 1 case dans 1 région \\
+\sum_{c \in \mathcal{C}} x_{c,p} = s \qquad \forall p \in \mathcal{P} & taille des régions \\
+z_{uv,p} \leq x_{u,p} \qquad \forall \{u,v\} \in \mathcal{A},\; \forall p \in \mathcal{P} & linéarisation sur \(u\) \\
+z_{uv,p} \leq x_{v,p} \qquad \forall \{u,v\} \in \mathcal{A},\; \forall p \in \mathcal{P} & linéarisation sur \(v\) \\
+z_{uv,p} \geq x_{u,p} + x_{v,p} - 1 \qquad \forall \{u,v\} \in \mathcal{A},\; \forall p \in \mathcal{P} & appartenance des voisins \\
+y_{uv} + \sum_{p \in \mathcal{P}} z_{uv,p} = 1 \qquad \forall \{u,v\} \in \mathcal{A} & définition des palissades \\
+\delta_c + \sum_{v \in N(c)} y_{cv} = a_c \qquad \forall c \in \mathcal{Q} & respect des indices de la case \\
+\sum_{c \in \mathcal{C}} r_{c,p} = 1 \qquad \forall p \in \mathcal{P} & choix d'une racine \\
+r_{c,p} \leq x_{c,p} \qquad \forall c \in \mathcal{C},\; \forall p \in \mathcal{P} & racine valide \\
+f^{p}_{uv} \leq (s-1)x_{u,p} \qquad \forall (u,v),\; \forall p \in \mathcal{P} & capacité sur \(u\) pour l'arête\\
+f^{p}_{uv} \leq (s-1)x_{v,p} \qquad \forall (u,v),\; \forall p \in \mathcal{P} & capacité sur \(v\) pour l'arête\\
+\sum_{u:(u,c)} f^{p}_{uc} - \sum_{v:(c,v)} f^{p}_{cv} = x_{c,p} - s\,r_{c,p} \qquad \forall c \in \mathcal{C},\; \forall p \in \mathcal{P} & conservation du flot
+\end{tabularx}
+\end{center}
+
+avec :
+\[
+x_{c,p},\; y_{uv},\; z_{uv,p},\; r_{c,p} \in \binary,
+\qquad
+f^{p}_{uv} \geq 0
+\]
+
+Cette formulation permet donc de modéliser le jeu \textit{Palisade} comme un programme linéaire en nombres entiers.
