@@ -1,31 +1,44 @@
 # This file contains methods to generate a data set of instances (i.e., sudoku grids)
 include("io.jl")
 
-"""
-Generate an n*n grid with a given density
+using Random
+using Random
 
-Argument
-- n: size of the grid
-- density: percentage in [0, 1] of initial values in the grid
-"""
-function generateInstance(n::Int64, density::Float64)
+function generateInstance(nbRows::Int64, nbCols::Int64, density::Float64)
 
-    # TODO
-    println("In file generation.jl, in method generateInstance(), TODO: generate an instance")
-    
-end 
+    grid = fill(-1, nbRows, nbCols)
 
-"""
-Generate all the instances
+    for i in 1:nbRows
+        for j in 1:nbCols
+            if rand() <= density
+                grid[i, j] = rand(0:3)
+            end
+        end
+    end
 
-Remark: a grid is generated only if the corresponding output file does not already exist
-"""
-function generateDataSet()
-
-    # TODO
-    println("In file generation.jl, in method generateDataSet(), TODO: generate an instance")
-    
+    return grid
 end
 
 
+function generateDataSet()
+
+    if !isdir("data")
+        mkdir("data")
+    end
+
+    instances = [
+        (4, 4, 0.30),
+        (5, 5, 0.30),
+        (6, 6, 0.35)
+    ]
+
+    for (nbRows, nbCols, density) in instances
+
+        grid = generateInstance(nbRows, nbCols, density)
+
+        fileName = "data/generated_$(nbRows)x$(nbCols).txt"
+
+        saveInstance(grid, fileName)
+    end
+end
 

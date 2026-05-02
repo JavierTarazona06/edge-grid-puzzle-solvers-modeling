@@ -89,18 +89,41 @@ docs/_build/
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
+*.ji
 deps/deps.jl
 deps/build.log
 deps/downloads/
 deps/usr/
 docs/build/
+docs/site/
 test/tmp/
+LocalPreferences.toml
+
+# Julia local environments and caches
+.julia/
+compiled/
+logs/
+registries/
+artifacts/
+scratchspaces/
+
+# Julia generated sysimages
+sysimage.so
+sysimage.dylib
+sysimage.dll
+JuliaSysimage.*
 
 # Editor backups
 *~
 
 # sudoku1.0 generated artifacts
 /sudoku1.0/res/
+
+# loopy generated artifacts
+/loopy/res/
+
+# palisade generated artifacts
+/palisade/res/
 
 # PyBuilder
 .pybuilder/

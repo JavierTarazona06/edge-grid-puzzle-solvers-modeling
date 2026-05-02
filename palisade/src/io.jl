@@ -12,20 +12,40 @@ inputFile: path of the input file
 """
 function readInputFile(inputFile::String)
 
-    # Open the input file
+    # Open file
     datafile = open(inputFile)
-
-    data = readlines(datafile)
+    lines = readlines(datafile)
     close(datafile)
 
-    # For each line of the input file
-    for line in data
+    # Dimensions
+    n = length(lines)
+    m = length(split(lines[1], ","))
 
-        # TODO
-        println("In file io.jl, in method readInputFile(), TODO: read a line of the input file")
+    # Grid (use -1 for empty cells)
+    grid = Array{Int64}(undef, n, m) # Values not yet defined
 
+    # Parse file
+    for i in 1:n
+        lineSplit = split(lines[i], ",")
+
+        for j in 1:m
+            val = strip(lineSplit[j]) # Remove spaces
+
+            if val == ""
+                grid[i, j] = -1
+            else
+                grid[i, j] = parse(Int64, val)
+            end
+        end
     end
 
+    # Display the read matrix line by line
+    println("Grid read from file ", inputFile, " :")
+    for i in 1:n
+        println(grid[i, :])
+    end
+
+    return grid
 end
 
 
