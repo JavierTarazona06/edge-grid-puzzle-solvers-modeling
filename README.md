@@ -22,7 +22,7 @@ There you can find the report of the project.
 
 - `sudoku1.0/`: most complete Julia implementation example in the repository. It includes dataset generation, CPLEX-based solving, heuristic solvers, a callback-based variant, and utilities to export result tables and plots.
 - `loopy/`: project scaffold for the Loopy puzzle family. The directory structure is in place, but several core methods still contain `TODO` markers.
-- `palisade/`: project scaffold for the Palisade puzzle family. Like `loopy/`, it is currently a template with unfinished generation and solving logic.
+- `palisade/`: Julia implementation for the Palisade puzzle family, including input reading and a CPLEX model with a connectivity callback.
 - `docs/rapport/`: LaTeX sources for the written report compiled by GitHub Actions.
 - `.github/workflows/latex.yml`: CI workflow that builds the report PDF and publishes it to GitHub Pages on pushes to `main`.
 
@@ -153,9 +153,9 @@ cd palisade
 julia --project=. -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); readInputFile("../data/instanceTest.txt")'
 ```
 
-### Run CPLEX on Fixed Instance
+### Run CPLEX with Callback on Fixed Instance
 
-To run `cplexSolve(t::Matrix{Int64})` from `palisade/src/resolution.jl` on `palisade/data/instanceTest.txt`:
+To run `cplexSolve(t::Matrix{Int64})` from `palisade/src/resolution.jl` on `palisade/data/instanceTest.txt`, use the following commands. This version solves the base Palisade model and uses a lazy constraint callback to reject disconnected regions during the CPLEX search.
 
 1. Go to the `palisade` directory:
 
@@ -197,6 +197,12 @@ You can also run steps 1 to 5 in one command and keep the variables available in
 cd palisade && julia --project=. -i -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); include("resolution.jl"); global t = readInputFile("../data/instanceTest.txt"); global isOptimal, x, yh, yv, solveTime = cplexSolve(t)'
 ```
 
+Or run the full fixed-instance test in one shell command:
+
+```bash
+cd palisade && julia --project=. -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); include("resolution.jl"); t = readInputFile("../data/instanceTest.txt"); isOptimal, x, yh, yv, solveTime = cplexSolve(t); println("isOptimal = ", isOptimal); println("solveTime = ", solveTime)'
+```
+
 6. Display the main result values:
 
 ```julia
@@ -213,6 +219,16 @@ You can also inspect the region-assignment variables:
 ```julia
 println("x[:,:,1] = ")
 println(JuMP.value.(x[:, :, 1]))
+```
+
+To check explicitly that the callback returned connected regions:
+
+```julia
+vals = JuMP.value.(x)
+nbRows, nbCols = size(t)
+nbRegions = div(nbRows * nbCols, 5)
+connected = all(length(connectedComponents([(i, j) for i in 1:nbRows, j in 1:nbCols if vals[i, j, p] > 0.9], nbRows, nbCols)) == 1 for p in 1:nbRegions)
+println("connected = ", connected)
 ```
 
 This requires a working local CPLEX installation and license.
