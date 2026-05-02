@@ -361,25 +361,44 @@ Pour de petites ou moyennes instances, cette formulation reste tout à fait expl
 
 L'idée est de ne pas introduire dès le départ toutes les contraintes de flot. On résout d'abord le modèle de base contenant les contraintes d'affectation, de taille des régions, de palissades et d'indices. Lorsqu'une solution entière candidate est trouvée, on vérifie alors si chaque région est connexe.
 
-Pour une région fixée \(p\), on considère l'ensemble des cases telles que \(x_{c,p} = 1\), puis on reconstruit le sous-graphe d'adjacence correspondant. Si ce sous-graphe n'est pas connexe, on choisit une composante connexe stricte non vide \(W \subset \mathcal{C}\) de cette région et on ajoute une contrainte qui interdit cette configuration déconnectée.
+Pour une région fixée \(p\), on considère l'ensemble des cases telles que \(x_{c,p} = 1\), puis on reconstruit le sous-graphe d'adjacence correspondant. Si ce sous-graphe n'est pas connexe, on choisit une composante connexe stricte non vide \(W \subset \mathcal{C}\) de cette région et on ajoute une contrainte qui interdit cette composante isolée.
 
-On peut par exemple utiliser la coupe suivante :
+La coupe suivante permet de le faire :
 \[
 \sum_{c \in W} x_{c,p}
 \leq
 \card{W} - 1 + \sum_{\{u,v\} \in B(W)} z_{uv,p},
 \]
-où \(B(W)\) désigne l'ensemble des paires de cases adjacentes ayant une extrémité dans \(W\) et l'autre dans \(\mathcal{C} \setminus W\).
+où \(B(W)\) désigne l'ensemble des paires de cases adjacentes ayant une extrémité dans \(W\) et l'autre dans \(\mathcal{C} \setminus W\). Autrement dit, \(B(W)\) représente le bord de \(W\).
 
-Cette contrainte s'interprète simplement. Si toutes les cases de \(W\) sont affectées à la région \(p\) mais qu'aucune arête de bord entre \(W\) et le reste de la grille ne relie encore \(W\) à une autre case de la même région, alors
+Le membre de gauche
+\[
+\sum_{c \in W} x_{c,p}
+\]
+compte combien de cases de \(W\) sont affectées à la région \(p\). Si toutes les cases de \(W\) appartiennent à \(p\), alors cette somme vaut exactement \(\card{W}\).
+
+Le dernier terme du membre de droite
+\[
+\sum_{\{u,v\} \in B(W)} z_{uv,p}
+\]
+compte les connexions entre \(W\) et l'extérieur de \(W\) qui restent dans la même région \(p\). En effet, \(z_{uv,p}=1\) signifie que les deux cases voisines \(u\) et \(v\) appartiennent toutes les deux à la région \(p\).
+
+Si \(W\) est isolé dans la région \(p\), aucune paire du bord \(B(W)\) ne relie \(W\) à une autre case de la même région. On a donc :
 \[
 \sum_{\{u,v\} \in B(W)} z_{uv,p} = 0,
 \]
-et la contrainte devient
+et la coupe devient :
 \[
 \sum_{c \in W} x_{c,p} \leq \card{W} - 1,
 \]
-ce qui interdit précisément cette composante isolée. En revanche, dès qu'au moins une liaison de même région existe sur le bord de \(W\), la coupe est satisfaite.
+ce qui interdit que toutes les cases de \(W\) restent affectées à la région \(p\). Le terme \(-1\) est donc essentiel : si on écrivait seulement \(\card{W}\), la contrainte serait toujours vraie et ne couperait pas la solution déconnectée.
+
+En revanche, si au moins une paire du bord relie \(W\) à une autre case de la même région, alors
+\[
+\sum_{\{u,v\} \in B(W)} z_{uv,p} \geq 1.
+\]
+La coupe autorise alors \(\sum_{c \in W} x_{c,p} = \card{W}\), car \(W\) n'est plus une composante isolée.
+
 
 Le \textit{callback} consiste donc à répéter les étapes suivantes :
 \begin{enumerate}
@@ -389,4 +408,4 @@ Le \textit{callback} consiste donc à répéter les étapes suivantes :
     \item relancer la recherche jusqu'à obtenir une solution où toutes les régions sont connexes.
 \end{enumerate}
 
-Il ne s'agit pas d'une heuristique, mais bien d'une manière exacte de traiter la contrainte difficile. La différence est que les contraintes de connexité ne sont ajoutées que lorsqu'elles deviennent nécessaires, ce qui permet en pratique de garder un modèle initial plus compact.
+Il ne s'agit pas d'une heuristique, car on n'accepte jamais une solution déconnectée : chaque solution candidate qui viole la connexité est coupée par une contrainte valide. Le callback reste donc une méthode exacte, mais les contraintes de connexité ne sont ajoutées que lorsqu'elles deviennent nécessaires, ce qui permet de garder un modèle initial plus compact.
