@@ -1,6 +1,7 @@
 # This file contains methods to solve an instance (heuristically or with CPLEX)
 using CPLEX
 using JuMP
+import MathOptInterface as MOI
 
 include("generation.jl")
 
@@ -140,6 +141,61 @@ function cplexSolve(t::Matrix{Int64})
         end
     end
 
+    function callback_connectivity(cb_data::CPLEX.CallbackContext, context_id::Clong)
+
+        if isIntegerPoint(cb_data, context_id)
+
+            CPLEX.load_callback_variable_primal(cb_data, context_id)
+            x_val = callback_value.(cb_data, x)
+
+            for p in 1:nbRegions
+                cells = [(i, j) for i in 1:nbRows, j in 1:nbCols if x_val[i, j, p] > 0.9]
+                components = connectedComponents(cells, nbRows, nbCols)
+
+                if length(components) > 1
+                    W = components[1]
+                    Wset = Set(W)
+
+                    borderTerms = Any[]
+
+                    for (i, j) in W
+
+                        if i > 1 && !((i-1, j) in Wset)
+                            push!(borderTerms, zh[i-1, j, p])
+                        end
+
+                        if i < nbRows && !((i+1, j) in Wset)
+                            push!(borderTerms, zh[i, j, p])
+                        end
+
+                        if j > 1 && !((i, j-1) in Wset)
+                            push!(borderTerms, zv[i, j-1, p])
+                        end
+
+                        if j < nbCols && !((i, j+1) in Wset)
+                            push!(borderTerms, zv[i, j, p])
+                        end
+                    end
+
+                    leftSide = sum(x[i, j, p] for (i, j) in W)
+                    rightSide = length(W) - 1
+
+                    if length(borderTerms) > 0
+                        rightSide += sum(borderTerms)
+                    end
+
+                    cstr = @build_constraint(leftSide <= rightSide)
+                    MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
+                    return
+                end
+            end
+        end
+    end
+
+    # CPLEX callbacks are used with one thread.
+    MOI.set(m, MOI.NumberOfThreads(), 1)
+    MOI.set(m, CPLEX.CallbackFunction(), callback_connectivity)
+
     # Start a chronometer
     start = time()
 
@@ -261,4 +317,65 @@ function solveDataSet()
             println(resolutionMethod[methodId], " time: " * string(round(solveTime, sigdigits=2)) * "s\n")
         end         
     end 
+end
+
+function connectedComponents(cells::Vector{Tuple{Int, Int}}, nbRows::Int64, nbCols::Int64)
+
+    remaining = Set(cells)
+    components = Vector{Vector{Tuple{Int, Int}}}()
+
+    while !isempty(remaining)
+        startCell = first(remaining)
+        delete!(remaining, startCell)
+
+        component = Tuple{Int, Int}[]
+        stack = [startCell]
+
+        while !isempty(stack)
+            cell = pop!(stack)
+            push!(component, cell)
+
+            i, j = cell
+            neighbors = Tuple{Int, Int}[]
+
+            if i > 1
+                push!(neighbors, (i-1, j))
+            end
+            if i < nbRows
+                push!(neighbors, (i+1, j))
+            end
+            if j > 1
+                push!(neighbors, (i, j-1))
+            end
+            if j < nbCols
+                push!(neighbors, (i, j+1))
+            end
+
+            for neighbor in neighbors
+                if neighbor in remaining
+                    delete!(remaining, neighbor)
+                    push!(stack, neighbor)
+                end
+            end
+        end
+
+        push!(components, component)
+    end
+
+    return components
+end
+
+"""
+Test if a callback was called because an integer solution was found.
+"""
+function isIntegerPoint(cb_data::CPLEX.CallbackContext, context_id::Clong)
+
+    if context_id != CPX_CALLBACKCONTEXT_CANDIDATE
+        return false
+    end
+
+    ispoint_p = Ref{Cint}()
+    ret = CPXcallbackcandidateispoint(cb_data, ispoint_p)
+
+    return ret == 0 && ispoint_p[] != 0
 end
