@@ -1,10 +1,12 @@
-\section{Modélisation du problème Loopy}
+\section{Jeux Loopy}
 
 Le jeu \textit{Loopy} consiste à sélectionner certaines arêtes d'une grille afin de former une unique boucle fermée. Certaines cases contiennent un indice numérique indiquant combien d'arêtes de leur contour doivent appartenir à la boucle.
 
 L'objectif principal n'est pas d'optimiser une quantité, mais simplement de trouver une solution réalisable. On peut donc considérer une fonction objectif constante.
 
-\subsection{Notations}
+\subsection{Modélisation}
+
+\subsubsection{Notations}
 
 On considère une grille rectangulaire composée de cases carrées.
 
@@ -17,7 +19,7 @@ On considère une grille rectangulaire composée de cases carrées.
     \item pour toute case \(p \in \Sset\), \(a_p \in \{0,1,2,3,4\}\) représente l'indice inscrit dans la case.
 \end{itemize}
 
-\subsection{Variables de décision}
+\subsubsection{Variables de décision}
 
 Pour chaque arête \(e \in \E\), on introduit une variable binaire :
 \[
@@ -37,16 +39,9 @@ y_v =
 \end{cases}
 \]
 
-\subsection{Fonction objectif}
+\subsubsection{Contraintes}
 
-Comme il s'agit uniquement de trouver une solution réalisable, on choisit une fonction objectif constante :
-\[
-\min 0
-\]
-
-\subsection{Contraintes}
-
-\subsubsection{Contraintes sur les cases numérotées}
+\subsubsection*{Contraintes sur les cases numérotées}
 
 Chaque case numérotée doit être bordée par exactement le nombre d'arêtes indiqué par son indice. Pour toute case \(p \in \Sset\), on impose :
 \[
@@ -54,7 +49,7 @@ Chaque case numérotée doit être bordée par exactement le nombre d'arêtes in
 \qquad \forall p \in \Sset
 \]
 
-\subsubsection{Contraintes sur les sommets}
+\subsubsection*{Contraintes sur les sommets}
 
 Dans une boucle, un sommet ne peut pas être une extrémité libre ni un point de branchement. Son degré doit donc être égal à \(0\) ou \(2\). On écrit :
 \[
@@ -72,7 +67,7 @@ y_v \in \binary \qquad \forall v \in \N
 
 Ces contraintes garantissent que les arêtes sélectionnées forment un ensemble de cycles disjoints, sans branchement ni croisement.
 
-\subsubsection{Contrainte difficile : unicité de la boucle}
+\subsubsection*{Contrainte difficile : unicité de la boucle}
 
 La difficulté principale du problème \textit{Loopy} réside dans le fait qu'il faut obtenir \textbf{une seule boucle}. Les contraintes précédentes autorisent encore la présence de plusieurs cycles disjoints. Pour imposer qu'il n'existe qu'une unique boucle, il faudrait interdire toutes les sous-boucles.
 
@@ -85,7 +80,14 @@ où \(E(W)\) désigne l'ensemble des arêtes dont les deux extrémités appartie
 
 Cette famille de contraintes est cependant de taille exponentielle par rapport à la taille de la grille. Elle n'est donc pas intégrable directement dans le modèle complet pour les grandes instances.
 
-\subsection{Modèle final}
+\subsubsection{Fonction objectif}
+
+Comme il s'agit uniquement de trouver une solution réalisable, on choisit une fonction objectif constante :
+\[
+\min 0
+\]
+
+\subsubsection{Modèle final}
 
 Le modèle de base peut ainsi s'écrire :
 
@@ -119,7 +121,7 @@ y_v \in \binary
 
 Ce modèle garantit le respect des indices et l'absence de branchements. En revanche, il ne garantit pas à lui seul l'unicité de la boucle.
 
-\subsection{Traitement de la règle difficile par callback}
+\subsubsection{Traitement de la règle difficile par callback}
 
 Pour traiter la contrainte d'unicité de la boucle, on peut utiliser un \textit{callback} durant la résolution. Le principe est le suivant :
 
@@ -136,11 +138,11 @@ Pour traiter la contrainte d'unicité de la boucle, on peut utiliser un \textit{
 
 Ainsi, la solution courante est exclue, et CPLEX poursuit la recherche jusqu'à obtenir une solution ne contenant qu'une seule boucle.
 
-\section{Conclusion}
+\subsection{Conclusion}
 
 La modélisation du jeu \textit{Loopy} par un programme linéaire en nombres entiers repose sur des variables binaires associées aux arêtes de la grille. Les contraintes locales sur les cases et les sommets sont faciles à exprimer. En revanche, l'unicité de la boucle constitue la principale difficulté du problème, car elle nécessite un très grand nombre de contraintes. Cette règle est donc plus efficacement traitée par l'ajout dynamique de contraintes via un callback.
 
-\section{Définition manuelle d’une instance}
+\subsection{Définition manuelle d’une instance}
 
 On crée dans le répertoire \texttt{data} un fichier \texttt{instanceTest.txt} représentant une instance simple du jeu \textit{Loopy}. 
 
@@ -157,7 +159,7 @@ Nous adoptons un format texte simple où :
     \item une case vide est représentée par un espace.
 \end{itemize}
 
-\subsection{Exemple d’instance}
+\subsubsection{Exemple d’instance}
 
 Considérons une grille \(4 \times 4\) :
 
@@ -173,7 +175,7 @@ Considérons une grille \(4 \times 4\) :
 
 
 
-\subsection{Interprétation}
+\subsubsection{Interprétation}
 
 \begin{itemize}
     \item La case \((1,2)\) contient la valeur 2 : exactement 2 arêtes autour de cette case doivent appartenir à la boucle.
@@ -183,7 +185,7 @@ Considérons une grille \(4 \times 4\) :
 
 Cette instance sera utilisée pour tester la lecture des données et la résolution du modèle.
 
-\section{Lecture d’une instance}
+\subsection{Lecture d’une instance}
 
 Nous implémentons une méthode \texttt{readInputFile} permettant de lire une instance du jeu \textit{Loopy} depuis un fichier texte.
 
@@ -196,7 +198,7 @@ Le format du fichier est le suivant :
 
 La méthode lit le fichier ligne par ligne, découpe chaque ligne selon les virgules, puis convertit les valeurs en entiers. Les cases vides sont représentées par la valeur \(-1\).
 
-\subsection{Implémentation}
+\subsubsection{Implémentation}
 
 \begin{verbatim}
 function readInputFile(inputFile::String)
@@ -228,7 +230,7 @@ function readInputFile(inputFile::String)
 end
 \end{verbatim}
 
-\subsection{Test}
+\subsubsection{Test}
 
 La méthode est testée en exécutant :
 
