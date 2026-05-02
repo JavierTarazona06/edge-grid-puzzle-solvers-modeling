@@ -239,3 +239,152 @@ readInputFile("./data/instanceTest.txt")
 \end{verbatim}
 
 Elle retourne une matrice d'entiers représentant la grille de l’instance.
+
+\section{Implémentation du modèle}
+
+\subsection{Méthode \texttt{cplexSolve}}
+
+Le modèle est implémenté à l'aide du solveur CPLEX via la bibliothèque \texttt{JuMP}. La méthode \texttt{cplexSolve} prend en entrée une matrice représentant la grille du jeu et retourne :
+\begin{itemize}
+    \item un booléen indiquant si une solution réalisable est trouvée ;
+    \item le temps de résolution ;
+    \item les variables représentant la solution, c'est-à-dire les arêtes horizontales et verticales sélectionnées.
+\end{itemize}
+
+\subsection{Variables}
+
+Pour une grille de taille \(n \times m\), on introduit :
+\begin{itemize}
+    \item \(h_{i,j} \in \{0,1\}\) : vaut 1 si l'arête horizontale \((i,j)\) est sélectionnée ;
+    \item \(v_{i,j} \in \{0,1\}\) : vaut 1 si l'arête verticale \((i,j)\) est sélectionnée ;
+    \item \(y_{i,j} \in \{0,1\}\) : vaut 1 si le sommet \((i,j)\) appartient à la boucle.
+\end{itemize}
+
+\subsection{Fonction objectif}
+
+On cherche uniquement une solution réalisable :
+\[
+\min 0
+\]
+
+\subsection{Contraintes}
+
+\paragraph{Contraintes sur les cases}
+Pour chaque case numérotée \((i,j)\), la somme des quatre arêtes qui l'entourent doit être égale à l'indice de la case :
+\[
+h_{i,j} + h_{i+1,j} + v_{i,j} + v_{i,j+1} = t_{i,j}.
+\]
+
+\paragraph{Contraintes sur les sommets}
+Chaque sommet doit avoir un degré égal à 0 ou 2 :
+\[
+\sum_{e \in \delta(i,j)} x_e = 2y_{i,j}.
+\]
+
+\subsection{Test de la méthode}
+
+La méthode a été testée sur l'instance \texttt{data/instanceTest.txt}. Après lecture de l'instance par la méthode \texttt{readInputFile}, la commande suivante a été exécutée :
+\begin{verbatim}
+isFeasible, solveTime, h, v = cplexSolve(grid)
+\end{verbatim}
+
+Le solveur CPLEX trouve une solution réalisable :
+\begin{verbatim}
+Solution trouvée : true
+Temps : 0.013 s
+\end{verbatim}
+
+Ainsi, le modèle de base permet bien de résoudre l'instance test et de retourner les variables représentant les arêtes horizontales et verticales de la solution.
+
+\subsection{Remarque}
+
+Ce modèle garantit que les arêtes sélectionnées respectent les contraintes locales des cases et forment une union de cycles sans branchement. Toutefois, il n'impose pas encore que la solution soit une unique boucle. Cette contrainte sera traitée à l'aide d'un callback.
+
+\subsection{Traitement de la règle difficile par callback}
+
+La règle difficile du jeu \textit{Loopy} est l'unicité de la boucle. En effet, les contraintes du modèle de base imposent seulement que chaque sommet ait un degré égal à 0 ou 2. Elles garantissent donc l'absence de branchements, mais elles peuvent encore autoriser plusieurs cycles disjoints.
+
+Afin de corriger ce problème, nous utilisons un callback CPLEX. À chaque fois que CPLEX trouve une solution entière, le callback récupère les arêtes sélectionnées, reconstruit les composantes connexes formées par ces arêtes, puis vérifie si plusieurs cycles sont présents.
+
+Si plusieurs composantes sont détectées, alors la solution ne respecte pas la règle du jeu. Pour chaque sous-boucle \(C\), on ajoute dynamiquement la contrainte suivante :
+\[
+\sum_{e \in C} x_e \leq |C|-1.
+\]
+
+Cette contrainte interdit à la même sous-boucle de réapparaître dans une solution future. Ainsi, CPLEX poursuit la résolution jusqu'à trouver une solution constituée d'une seule boucle.
+
+Le callback suit donc les étapes suivantes :
+\begin{enumerate}
+    \item récupérer la solution entière courante ;
+    \item identifier les arêtes sélectionnées ;
+    \item construire les composantes connexes ;
+    \item si plusieurs boucles sont présentes, ajouter une contrainte de coupe ;
+    \item continuer la résolution.
+\end{enumerate}
+
+\subsection{Test du callback}
+
+La méthode \texttt{cplexSolveWithCallback} a été testée sur l'instance \texttt{data/instanceTest.txt}. Le callback est bien activé par CPLEX, comme l'indique l'affichage :
+\begin{verbatim}
+CPXPARAM_Threads 1
+Generic callback
+\end{verbatim}
+
+La résolution retourne :
+\begin{verbatim}
+Solution trouvée : true
+Temps : 2.19 s
+\end{verbatim}
+
+Ainsi, le modèle avec callback permet de trouver une solution réalisable tout en prenant en compte la contrainte difficile d'unicité de la boucle.
+
+Cette approche évite d'ajouter dès le départ toutes les contraintes d'élimination de sous-boucles, qui seraient trop nombreuses.
+
+\section{Affichage en ligne de commande}
+
+Deux méthodes ont été ajoutées dans le fichier \texttt{io.jl} afin d'afficher une instance et une solution du jeu \textit{Loopy} directement dans la console.
+
+La méthode \texttt{displayGrid} affiche l'instance non résolue, en remplaçant les cases vides par un point. La méthode \texttt{displaySolution} affiche ensuite la solution obtenue à partir des variables d'arêtes horizontales et verticales retournées par CPLEX.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.42\textwidth}
+        \centering
+        \includegraphics[width=\linewidth,height=4.5cm,keepaspectratio]{imgs/loopy_instance.png}
+        \\
+        \small Instance
+    \end{minipage}
+    \hspace{0.05\textwidth}
+    \begin{minipage}{0.42\textwidth}
+        \centering
+        \includegraphics[width=\linewidth,height=4.5cm,keepaspectratio]{imgs/loopy_solution.png}
+        \\
+        \small Solution
+    \end{minipage}
+    \caption{Affichage en ligne de commande de l’instance et de la solution \textit{Loopy}.}
+\end{figure}
+
+\section{Génération d’instances}
+
+\subsection{Génération d’une instance}
+
+Une méthode \texttt{generateInstance} a été implémentée afin de générer des instances aléatoires du jeu \textit{Loopy}. Elle prend en paramètres la taille de la grille ainsi qu’une densité, représentant la probabilité qu’une case contienne un indice.
+
+Chaque case est soit vide (valeur \(-1\)), soit remplie par un entier aléatoire entre 0 et 3. Ce choix permet de générer des instances de difficulté variable, tout en évitant des configurations trop contraintes.
+
+\subsection{Génération d’un ensemble d’instances}
+
+La méthode \texttt{generateDataSet} permet de générer automatiquement plusieurs instances et de les enregistrer dans le répertoire \texttt{./data}.
+
+Afin d’analyser les performances du modèle, plusieurs tailles de grilles ont été considérées (par exemple \(4 \times 4\), \(5 \times 5\), \(6 \times 6\)), avec une densité fixée. Cela permet d’étudier l’impact de la taille sur le temps de résolution.
+
+\subsection{Analyse}
+
+Les instances générées ne garantissent pas l’existence ni l’unicité d’une solution, ce qui est conforme aux consignes du projet. Cela permet toutefois d’évaluer le comportement du solveur dans différents cas :
+\begin{itemize}
+    \item instances faciles, résolues rapidement ;
+    \item instances plus contraintes, nécessitant davantage de temps ;
+    \item instances éventuellement sans solution.
+\end{itemize}
+
+Cette approche permet d’observer l’influence de la taille et de la structure des instances sur les performances du modèle et du callback.
