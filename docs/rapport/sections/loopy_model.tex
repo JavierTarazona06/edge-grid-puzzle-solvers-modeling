@@ -4,7 +4,7 @@ Le jeu \textit{Loopy} consiste à sélectionner certaines arêtes d'une grille a
 
 L'objectif principal n'est pas d'optimiser une quantité, mais simplement de trouver une solution réalisable. On peut donc considérer une fonction objectif constante.
 
-\subsection{Modélisation}
+\subsection{Modélisation PLNE}
 
 \subsubsection{Notations}
 
@@ -121,7 +121,19 @@ y_v \in \binary
 
 Ce modèle garantit le respect des indices et l'absence de branchements. En revanche, il ne garantit pas à lui seul l'unicité de la boucle.
 
-\subsubsection{Traitement de la règle difficile par callback}
+\subsubsection{Conclusion}
+
+La modélisation du jeu \textit{Loopy} par un 
+programme linéaire en nombres entiers 
+repose sur des variables binaires associées 
+aux arêtes de la grille. Les contraintes locales sur les cases et 
+les sommets sont faciles à exprimer. En revanche, l'unicité de la 
+boucle constitue la principale difficulté du problème, car elle 
+nécessite un très grand nombre de contraintes. Cette règle est donc 
+plus efficacement traitée par l'ajout dynamique de contraintes via un 
+callback.
+
+\subsection{Traitement de la règle difficile par callback}
 
 Pour traiter la contrainte d'unicité de la boucle, on peut utiliser un \textit{callback} durant la résolution. Le principe est le suivant :
 
@@ -137,10 +149,6 @@ Pour traiter la contrainte d'unicité de la boucle, on peut utiliser un \textit{
 \]
 
 Ainsi, la solution courante est exclue, et CPLEX poursuit la recherche jusqu'à obtenir une solution ne contenant qu'une seule boucle.
-
-\subsection{Conclusion}
-
-La modélisation du jeu \textit{Loopy} par un programme linéaire en nombres entiers repose sur des variables binaires associées aux arêtes de la grille. Les contraintes locales sur les cases et les sommets sont faciles à exprimer. En revanche, l'unicité de la boucle constitue la principale difficulté du problème, car elle nécessite un très grand nombre de contraintes. Cette règle est donc plus efficacement traitée par l'ajout dynamique de contraintes via un callback.
 
 \subsection{Définition manuelle d’une instance}
 
@@ -240,9 +248,9 @@ readInputFile("./data/instanceTest.txt")
 
 Elle retourne une matrice d'entiers représentant la grille de l’instance.
 
-\section{Implémentation du modèle}
+\subsection{Implémentation du modèle}
 
-\subsection{Méthode \texttt{cplexSolve}}
+\subsubsection{Méthode \texttt{cplexSolve}}
 
 Le modèle est implémenté à l'aide du solveur CPLEX via la bibliothèque \texttt{JuMP}. La méthode \texttt{cplexSolve} prend en entrée une matrice représentant la grille du jeu et retourne :
 \begin{itemize}
@@ -251,7 +259,7 @@ Le modèle est implémenté à l'aide du solveur CPLEX via la bibliothèque \tex
     \item les variables représentant la solution, c'est-à-dire les arêtes horizontales et verticales sélectionnées.
 \end{itemize}
 
-\subsection{Variables}
+\subsubsection{Variables}
 
 Pour une grille de taille \(n \times m\), on introduit :
 \begin{itemize}
@@ -260,14 +268,14 @@ Pour une grille de taille \(n \times m\), on introduit :
     \item \(y_{i,j} \in \{0,1\}\) : vaut 1 si le sommet \((i,j)\) appartient à la boucle.
 \end{itemize}
 
-\subsection{Fonction objectif}
+\subsubsection{Fonction objectif}
 
 On cherche uniquement une solution réalisable :
 \[
 \min 0
 \]
 
-\subsection{Contraintes}
+\subsubsection{Contraintes}
 
 \paragraph{Contraintes sur les cases}
 Pour chaque case numérotée \((i,j)\), la somme des quatre arêtes qui l'entourent doit être égale à l'indice de la case :
@@ -281,7 +289,7 @@ Chaque sommet doit avoir un degré égal à 0 ou 2 :
 \sum_{e \in \delta(i,j)} x_e = 2y_{i,j}.
 \]
 
-\subsection{Test de la méthode}
+\subsubsection{Test de la méthode}
 
 La méthode a été testée sur l'instance \texttt{data/instanceTest.txt}. Après lecture de l'instance par la méthode \texttt{readInputFile}, la commande suivante a été exécutée :
 \begin{verbatim}
@@ -296,11 +304,11 @@ Temps : 0.013 s
 
 Ainsi, le modèle de base permet bien de résoudre l'instance test et de retourner les variables représentant les arêtes horizontales et verticales de la solution.
 
-\subsection{Remarque}
+\subsubsection{Remarque}
 
 Ce modèle garantit que les arêtes sélectionnées respectent les contraintes locales des cases et forment une union de cycles sans branchement. Toutefois, il n'impose pas encore que la solution soit une unique boucle. Cette contrainte sera traitée à l'aide d'un callback.
 
-\subsection{Traitement de la règle difficile par callback}
+\subsubsection{Traitement de la règle difficile par callback}
 
 La règle difficile du jeu \textit{Loopy} est l'unicité de la boucle. En effet, les contraintes du modèle de base imposent seulement que chaque sommet ait un degré égal à 0 ou 2. Elles garantissent donc l'absence de branchements, mais elles peuvent encore autoriser plusieurs cycles disjoints.
 
@@ -322,7 +330,7 @@ Le callback suit donc les étapes suivantes :
     \item continuer la résolution.
 \end{enumerate}
 
-\subsection{Test du callback}
+\subsubsection{Test du callback}
 
 La méthode \texttt{cplexSolveWithCallback} a été testée sur l'instance \texttt{data/instanceTest.txt}. Le callback est bien activé par CPLEX, comme l'indique l'affichage :
 \begin{verbatim}
@@ -340,7 +348,7 @@ Ainsi, le modèle avec callback permet de trouver une solution réalisable tout 
 
 Cette approche évite d'ajouter dès le départ toutes les contraintes d'élimination de sous-boucles, qui seraient trop nombreuses.
 
-\section{Affichage en ligne de commande}
+\subsection{Affichage en ligne de commande}
 
 Deux méthodes ont été ajoutées dans le fichier \texttt{io.jl} afin d'afficher une instance et une solution du jeu \textit{Loopy} directement dans la console.
 
@@ -364,21 +372,21 @@ La méthode \texttt{displayGrid} affiche l'instance non résolue, en remplaçant
     \caption{Affichage en ligne de commande de l’instance et de la solution \textit{Loopy}.}
 \end{figure}
 
-\section{Génération d’instances}
+\subsection{Génération d’instances}
 
-\subsection{Génération d’une instance}
+\subsubsection{Génération d’une instance}
 
 Une méthode \texttt{generateInstance} a été implémentée afin de générer des instances aléatoires du jeu \textit{Loopy}. Elle prend en paramètres la taille de la grille ainsi qu’une densité, représentant la probabilité qu’une case contienne un indice.
 
 Chaque case est soit vide (valeur \(-1\)), soit remplie par un entier aléatoire entre 0 et 3. Ce choix permet de générer des instances de difficulté variable, tout en évitant des configurations trop contraintes.
 
-\subsection{Génération d’un ensemble d’instances}
+\subsubsection{Génération d’un ensemble d’instances}
 
 La méthode \texttt{generateDataSet} permet de générer automatiquement plusieurs instances et de les enregistrer dans le répertoire \texttt{./data}.
 
 Afin d’analyser les performances du modèle, plusieurs tailles de grilles ont été considérées (par exemple \(4 \times 4\), \(5 \times 5\), \(6 \times 6\)), avec une densité fixée. Cela permet d’étudier l’impact de la taille sur le temps de résolution.
 
-\subsection{Analyse}
+\subsubsection{Analyse}
 
 Les instances générées ne garantissent pas l’existence ni l’unicité d’une solution, ce qui est conforme aux consignes du projet. Cela permet toutefois d’évaluer le comportement du solveur dans différents cas :
 \begin{itemize}
@@ -388,3 +396,94 @@ Les instances générées ne garantissent pas l’existence ni l’unicité d’
 \end{itemize}
 
 Cette approche permet d’observer l’influence de la taille et de la structure des instances sur les performances du modèle et du callback.
+
+\subsection{Résolution de plusieurs instances}
+
+\subsubsection{Résolution automatique avec CPLEX}
+
+La méthode \texttt{solveDataSet} permet de résoudre automatiquement toutes les instances contenues dans le répertoire \texttt{data}. Pour chaque fichier \texttt{.txt}, l'instance est lue avec \texttt{readInputFile}, puis résolue avec la méthode \texttt{cplexSolveWithCallback}.
+
+Les résultats sont sauvegardés dans le répertoire \texttt{res/cplex}. Chaque fichier de résultat contient les deux variables demandées :
+\begin{verbatim}
+solveTime = ...
+isOptimal = ...
+\end{verbatim}
+
+Ces variables permettent ensuite de construire les tableaux et graphiques de comparaison des performances.
+
+\subsubsection{Résolution heuristique}
+
+Comme \textit{Loopy} est un jeu difficile à traiter, une méthode heuristique \texttt{heuristicSolve} a aussi été implémentée. Cette heuristique repose sur une recherche locale aléatoire.
+
+Une solution candidate est représentée par deux matrices binaires :
+\begin{itemize}
+    \item \(h\), pour les arêtes horizontales ;
+    \item \(v\), pour les arêtes verticales.
+\end{itemize}
+
+À chaque itération, une arête est choisie aléatoirement puis inversée. La qualité de la solution est évaluée par une fonction de score qui pénalise :
+\begin{itemize}
+    \item les cases numérotées dont le nombre d'arêtes sélectionnées n'est pas respecté ;
+    \item les sommets dont le degré est différent de 0 ou 2.
+\end{itemize}
+
+L'algorithme conserve les modifications améliorantes et accepte parfois une solution moins bonne afin d'éviter les blocages locaux. La recherche s'arrête lorsqu'une solution de score nul est trouvée ou lorsque la limite de temps est atteinte.
+
+Les résultats de l'heuristique sont sauvegardés dans le répertoire \texttt{res/heuristique}, avec les mêmes variables :
+\begin{verbatim}
+solveTime = ...
+isOptimal = ...
+\end{verbatim}
+
+\subsubsection{Résultats obtenus}
+
+La méthode \texttt{solveDataSet} a été testée sur plusieurs instances générées ainsi que sur l'instance de test. Les résultats obtenus sont les suivants :
+
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Instance} & \textbf{CPLEX} & \textbf{Temps CPLEX (s)} & \textbf{Heuristique} & \textbf{Temps heur. (s)} \\
+\midrule
+\texttt{generated\_4x4.txt} & true & 2.4 & true & 0.014 \\
+\texttt{generated\_5x5.txt} & true & 0.003 & true & 0.000 \\
+\texttt{generated\_6x6.txt} & false & 0.001 & false & 20.0 \\
+\texttt{instanceTest.txt} & true & 0.003 & true & 0.031 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+On observe que CPLEX trouve rapidement une solution pour les petites instances réalisables. Pour l'instance \texttt{generated\_6x6.txt}, CPLEX détecte rapidement l'infaisabilité, tandis que l'heuristique atteint sa limite de temps sans trouver de solution.
+
+\subsection{Mise en forme des résultats}
+
+La méthode \texttt{resultsArray} a été utilisée afin de générer automatiquement un tableau récapitulatif des résultats obtenus. Elle parcourt les dossiers \texttt{res/cplex} et \texttt{res/heuristique}, lit les variables \texttt{solveTime} et \texttt{isOptimal}, puis produit un tableau comparatif.
+
+Le tableau obtenu permet de comparer les deux méthodes selon le temps de résolution et la réussite de la résolution. On observe notamment que l'instance \texttt{generated\_6x6.txt} n'a été résolue par aucune des deux méthodes.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4} 
+ \begin{tabular}{lrrrr}
+	\hline
+ & \multicolumn{2}{c}{\textbf{cplex}} & \multicolumn{2}{c}{\textbf{heuristique}}\\
+\textbf{Instance}  & \textbf{Temps (s)} & \textbf{Optimal ?}  & \textbf{Temps (s)} & \textbf{Optimal ?} \\\hline
+
+generated\_4x4.txt & 2.39 & 
+$\times$
+ & 0.01 & 
+$\times$
+\\
+generated\_5x5.txt & 0.0 & 
+$\times$
+ & 0.0 & 
+$\times$
+\\
+generated\_6x6.txt & 0.0 & 
+ & 20.0 & 
+\\
+instanceTest.txt & 0.0 & 
+$\times$
+ & 0.03 & 
+$\times$
+\\
+\hline\end{tabular}
+\end{center}

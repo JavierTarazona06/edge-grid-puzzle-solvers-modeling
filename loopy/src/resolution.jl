@@ -1,7 +1,7 @@
 # This file contains methods to solve an instance (heuristically or with CPLEX)
 using CPLEX
 using JuMP
-using CPLEX
+using Random
 
 include("generation.jl")
 
@@ -270,12 +270,100 @@ end
 """
 Heuristically solve an instance
 """
-function heuristicSolve()
 
-    # TODO
-    println("In file resolution.jl, in method heuristicSolve(), TODO: fix input and output, define the model")
-    
-end 
+
+function scoreLoopy(t, h, v)
+    nbRows, nbCols = size(t)
+    score = 0
+
+    for i in 1:nbRows, j in 1:nbCols
+        if t[i,j] != -1
+            s = h[i,j] + h[i+1,j] + v[i,j] + v[i,j+1]
+            score += abs(s - t[i,j])
+        end
+    end
+
+    for i in 1:nbRows+1, j in 1:nbCols+1
+        deg = 0
+        if j > 1
+            deg += h[i,j-1]
+        end
+        if j <= nbCols
+            deg += h[i,j]
+        end
+        if i > 1
+            deg += v[i-1,j]
+        end
+        if i <= nbRows
+            deg += v[i,j]
+        end
+
+        if deg != 0 && deg != 2
+            score += 5
+        end
+    end
+
+    return score
+end
+
+
+function heuristicSolve(t::Matrix{Int64}; timeLimit::Float64=20.0)
+
+    nbRows, nbCols = size(t)
+
+    h = rand(0:1, nbRows+1, nbCols)
+    v = rand(0:1, nbRows, nbCols+1)
+
+    bestH = copy(h)
+    bestV = copy(v)
+    bestScore = scoreLoopy(t, h, v)
+
+    start = time()
+
+    while time() - start < timeLimit && bestScore > 0
+
+        h2 = copy(bestH)
+        v2 = copy(bestV)
+
+        if rand() < 0.5
+            i = rand(1:nbRows+1)
+            j = rand(1:nbCols)
+            h2[i,j] = 1 - h2[i,j]
+        else
+            i = rand(1:nbRows)
+            j = rand(1:nbCols+1)
+            v2[i,j] = 1 - v2[i,j]
+        end
+
+        newScore = scoreLoopy(t, h2, v2)
+
+        if newScore <= bestScore || rand() < 0.01
+            bestH = h2
+            bestV = v2
+            bestScore = newScore
+        end
+    end
+
+    isOptimal = bestScore == 0
+    solveTime = time() - start
+
+    return isOptimal, solveTime, bestH, bestV
+end
+
+function writeLoopySolution(fout, h, v)
+
+    println(fout, "h = [")
+    for i in 1:size(h,1)
+        println(fout, join(h[i,:], " "))
+    end
+    println(fout, "]")
+
+    println(fout, "v = [")
+    for i in 1:size(v,1)
+        println(fout, join(v[i,:], " "))
+    end
+    println(fout, "]")
+end
 
 """
 Solve all the instances contained in "../data" through CPLEX and heuristics
@@ -286,108 +374,65 @@ Remark: If an instance has previously been solved (either by cplex or the heuris
 """
 function solveDataSet()
 
-    dataFolder = "../data/"
-    resFolder = "../res/"
+    dataFolder = "data/"
+    resFolder = "res/"
 
-    # Array which contains the name of the resolution methods
-    resolutionMethod = ["cplex"]
-    #resolutionMethod = ["cplex", "heuristique"]
+    resolutionMethod = ["cplex", "heuristique"]
 
-    # Array which contains the result folder of each resolution method
-    resolutionFolder = resFolder .* resolutionMethod
+    if !isdir(resFolder)
+        mkdir(resFolder)
+    end
 
-    # Create each result folder if it does not exist
-    for folder in resolutionFolder
+    for method in resolutionMethod
+        folder = resFolder * method
         if !isdir(folder)
             mkdir(folder)
         end
     end
-            
-    global isOptimal = false
-    global solveTime = -1
 
-    # For each instance
-    # (for each file in folder dataFolder which ends by ".txt")
-    for file in filter(x->occursin(".txt", x), readdir(dataFolder))  
-        
+    for file in filter(x -> occursin(".txt", x), readdir(dataFolder))
+
         println("-- Resolution of ", file)
-        readInputFile(dataFolder * file)
 
-        # TODO
-        println("In file resolution.jl, in method solveDataSet(), TODO: read value returned by readInputFile()")
-        
-        # For each resolution method
-        for methodId in 1:size(resolutionMethod, 1)
-            
-            outputFile = resolutionFolder[methodId] * "/" * file
+        grid = readInputFile(dataFolder * file)
 
-            # If the instance has not already been solved by this method
+        for method in resolutionMethod
+
+            outputFile = resFolder * method * "/" * file
+
             if !isfile(outputFile)
-                
-                fout = open(outputFile, "w")  
 
-                resolutionTime = -1
-                isOptimal = false
-                
-                # If the method is cplex
-                if resolutionMethod[methodId] == "cplex"
-                    
-                    # TODO 
-                    println("In file resolution.jl, in method solveDataSet(), TODO: fix cplexSolve() arguments and returned values")
-                    
-                    # Solve it and get the results
-                    isOptimal, resolutionTime = cplexSolve()
-                    
-                    # If a solution is found, write it
+                fout = open(outputFile, "w")
+
+                if method == "cplex"
+
+                    isOptimal, solveTime, h, v = cplexSolveWithCallback(grid)
+
                     if isOptimal
-                        # TODO
-                        println("In file resolution.jl, in method solveDataSet(), TODO: write cplex solution in fout") 
+                        hVal = round.(Int, JuMP.value.(h))
+                        vVal = round.(Int, JuMP.value.(v))
+                        writeLoopySolution(fout, hVal, vVal)
                     end
 
-                # If the method is one of the heuristics
                 else
-                    
-                    isSolved = false
 
-                    # Start a chronometer 
-                    startingTime = time()
-                    
-                    # While the grid is not solved and less than 100 seconds are elapsed
-                    while !isOptimal && resolutionTime < 100
-                        
-                        # TODO 
-                        println("In file resolution.jl, in method solveDataSet(), TODO: fix heuristicSolve() arguments and returned values")
-                        
-                        # Solve it and get the results
-                        isOptimal, resolutionTime = heuristicSolve()
+                    isOptimal, solveTime, h, v = heuristicSolve(grid)
 
-                        # Stop the chronometer
-                        resolutionTime = time() - startingTime
-                        
-                    end
-
-                    # Write the solution (if any)
                     if isOptimal
-
-                        # TODO
-                        println("In file resolution.jl, in method solveDataSet(), TODO: write the heuristic solution in fout")
-                        
-                    end 
+                        writeLoopySolution(fout, h, v)
+                    end
                 end
 
-                println(fout, "solveTime = ", resolutionTime) 
+                println(fout, "solveTime = ", solveTime)
                 println(fout, "isOptimal = ", isOptimal)
-                
-                # TODO
-                println("In file resolution.jl, in method solveDataSet(), TODO: write the solution in fout") 
+
                 close(fout)
             end
 
-
-            # Display the results obtained with the method on the current instance
             include(outputFile)
-            println(resolutionMethod[methodId], " optimal: ", isOptimal)
-            println(resolutionMethod[methodId], " time: " * string(round(solveTime, sigdigits=2)) * "s\n")
-        end         
-    end 
+
+            println(method, " optimal: ", isOptimal)
+            println(method, " time: ", string(round(solveTime, sigdigits=2)), "s\n")
+        end
+    end
 end
