@@ -388,3 +388,94 @@ Les instances générées ne garantissent pas l’existence ni l’unicité d’
 \end{itemize}
 
 Cette approche permet d’observer l’influence de la taille et de la structure des instances sur les performances du modèle et du callback.
+
+\section{Résolution de plusieurs instances}
+
+\subsection{Résolution automatique avec CPLEX}
+
+La méthode \texttt{solveDataSet} permet de résoudre automatiquement toutes les instances contenues dans le répertoire \texttt{data}. Pour chaque fichier \texttt{.txt}, l'instance est lue avec \texttt{readInputFile}, puis résolue avec la méthode \texttt{cplexSolveWithCallback}.
+
+Les résultats sont sauvegardés dans le répertoire \texttt{res/cplex}. Chaque fichier de résultat contient les deux variables demandées :
+\begin{verbatim}
+solveTime = ...
+isOptimal = ...
+\end{verbatim}
+
+Ces variables permettent ensuite de construire les tableaux et graphiques de comparaison des performances.
+
+\subsection{Résolution heuristique}
+
+Comme \textit{Loopy} est un jeu difficile à traiter, une méthode heuristique \texttt{heuristicSolve} a aussi été implémentée. Cette heuristique repose sur une recherche locale aléatoire.
+
+Une solution candidate est représentée par deux matrices binaires :
+\begin{itemize}
+    \item \(h\), pour les arêtes horizontales ;
+    \item \(v\), pour les arêtes verticales.
+\end{itemize}
+
+À chaque itération, une arête est choisie aléatoirement puis inversée. La qualité de la solution est évaluée par une fonction de score qui pénalise :
+\begin{itemize}
+    \item les cases numérotées dont le nombre d'arêtes sélectionnées n'est pas respecté ;
+    \item les sommets dont le degré est différent de 0 ou 2.
+\end{itemize}
+
+L'algorithme conserve les modifications améliorantes et accepte parfois une solution moins bonne afin d'éviter les blocages locaux. La recherche s'arrête lorsqu'une solution de score nul est trouvée ou lorsque la limite de temps est atteinte.
+
+Les résultats de l'heuristique sont sauvegardés dans le répertoire \texttt{res/heuristique}, avec les mêmes variables :
+\begin{verbatim}
+solveTime = ...
+isOptimal = ...
+\end{verbatim}
+
+\subsection{Résultats obtenus}
+
+La méthode \texttt{solveDataSet} a été testée sur plusieurs instances générées ainsi que sur l'instance de test. Les résultats obtenus sont les suivants :
+
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Instance} & \textbf{CPLEX} & \textbf{Temps CPLEX (s)} & \textbf{Heuristique} & \textbf{Temps heur. (s)} \\
+\midrule
+\texttt{generated\_4x4.txt} & true & 2.4 & true & 0.014 \\
+\texttt{generated\_5x5.txt} & true & 0.003 & true & 0.000 \\
+\texttt{generated\_6x6.txt} & false & 0.001 & false & 20.0 \\
+\texttt{instanceTest.txt} & true & 0.003 & true & 0.031 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+On observe que CPLEX trouve rapidement une solution pour les petites instances réalisables. Pour l'instance \texttt{generated\_6x6.txt}, CPLEX détecte rapidement l'infaisabilité, tandis que l'heuristique atteint sa limite de temps sans trouver de solution.
+
+\section{Mise en forme des résultats}
+
+La méthode \texttt{resultsArray} a été utilisée afin de générer automatiquement un tableau récapitulatif des résultats obtenus. Elle parcourt les dossiers \texttt{res/cplex} et \texttt{res/heuristique}, lit les variables \texttt{solveTime} et \texttt{isOptimal}, puis produit un tableau comparatif.
+
+Le tableau obtenu permet de comparer les deux méthodes selon le temps de résolution et la réussite de la résolution. On observe notamment que l'instance \texttt{generated\_6x6.txt} n'a été résolue par aucune des deux méthodes.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4} 
+ \begin{tabular}{lrrrr}
+	\hline
+ & \multicolumn{2}{c}{\textbf{cplex}} & \multicolumn{2}{c}{\textbf{heuristique}}\\
+\textbf{Instance}  & \textbf{Temps (s)} & \textbf{Optimal ?}  & \textbf{Temps (s)} & \textbf{Optimal ?} \\\hline
+
+generated\_4x4.txt & 2.39 & 
+$\times$
+ & 0.01 & 
+$\times$
+\\
+generated\_5x5.txt & 0.0 & 
+$\times$
+ & 0.0 & 
+$\times$
+\\
+generated\_6x6.txt & 0.0 & 
+ & 20.0 & 
+\\
+instanceTest.txt & 0.0 & 
+$\times$
+ & 0.03 & 
+$\times$
+\\
+\hline\end{tabular}
+\end{center}
