@@ -155,7 +155,7 @@ julia --project=. -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl");
 
 ### Run CPLEX with Callback on Fixed Instance
 
-To run `cplexSolve(t::Matrix{Int64})` from `palisade/src/resolution.jl` on `palisade/data/instanceTest.txt`, use the following commands. This version solves the base Palisade model and uses a lazy constraint callback to reject disconnected regions during the CPLEX search.
+To run `cplexSolve(t::Matrix{Int64}; regionSize=5, printValues=false)` from `palisade/src/resolution.jl` on `palisade/data/instanceTest.txt`, use the following commands. This version solves the base Palisade model and uses a lazy constraint callback to reject disconnected regions during the CPLEX search.
 
 1. Go to the `palisade` directory:
 
@@ -191,16 +191,20 @@ t = readInputFile("../data/instanceTest.txt")
 isOptimal, x, yh, yv, solveTime = cplexSolve(t)
 ```
 
+The function `cplexSolve` has two optional keyword arguments:
+- `regionSize=5` by default. The value must divide `nbRows * nbCols`.
+- `printValues=false` by default. If you call `cplexSolve(t; printValues=true)`, it prints the returned values with `println(...)`: `isOptimal`, `x`, `yh`, `yv`, and `solveTime`.
+
+For example, to use another region size:
+
+```julia
+isOptimal, x, yh, yv, solveTime = cplexSolve(t; regionSize=4)
+```
+
 You can also run steps 1 to 5 in one command and keep the variables available in the Julia session:
 
 ```bash
-cd palisade && julia --project=. -i -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); include("resolution.jl"); global t = readInputFile("../data/instanceTest.txt"); global isOptimal, x, yh, yv, solveTime = cplexSolve(t)'
-```
-
-Or run the full fixed-instance test in one shell command:
-
-```bash
-cd palisade && julia --project=. -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); include("resolution.jl"); t = readInputFile("../data/instanceTest.txt"); isOptimal, x, yh, yv, solveTime = cplexSolve(t); println("isOptimal = ", isOptimal); println("solveTime = ", solveTime)'
+cd palisade && julia --project=. -i -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); include("resolution.jl"); global t = readInputFile("../data/instanceTest.txt"); global isOptimal, x, yh, yv, solveTime = cplexSolve(t; printValues=true, regionSize=5)'
 ```
 
 6. Display the main result values:
@@ -221,14 +225,16 @@ println("x[:,:,1] = ")
 println(JuMP.value.(x[:, :, 1]))
 ```
 
-To check explicitly that the callback returned connected regions:
+To check explicitly that the callback returned connected regions, run:
 
 ```julia
-vals = JuMP.value.(x)
-nbRows, nbCols = size(t)
-nbRegions = div(nbRows * nbCols, 5)
-connected = all(length(connectedComponents([(i, j) for i in 1:nbRows, j in 1:nbCols if vals[i, j, p] > 0.9], nbRows, nbCols)) == 1 for p in 1:nbRegions)
-println("connected = ", connected)
+checkConnectedRegions(t, x)
+```
+
+If you solved the instance with a non-default region size, use the same value here:
+
+```julia
+checkConnectedRegions(t, x; regionSize=5)
 ```
 
 This requires a working local CPLEX installation and license.
