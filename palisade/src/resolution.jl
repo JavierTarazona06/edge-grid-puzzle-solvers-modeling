@@ -22,7 +22,7 @@ function cplexSolve(t::Matrix{Int64})
     m = Model(CPLEX.Optimizer)
 
     # -----------------------------
-    # Variables 
+    # Variables
     # -----------------------------
 
     # Cell-to-region assignment - x[row, col, region]
@@ -206,18 +206,160 @@ function cplexSolve(t::Matrix{Int64})
     # 1 - true if an optimum is found
     # 2 - the resolution time
     return JuMP.is_solved_and_feasible(m), x, yh, yv, time() - start
-    
+
 end
 
 """
-Heuristically solve an instance
+Check whether assigning a cell to a region can still satisfy the local clue constraints.
 """
-function heuristicSolve()
+function isValidMove(grid::Matrix{Int}, clues::Matrix{Int}, row::Int, col::Int, regionId::Int, regionSize::Int)
+    n, m = size(grid)
 
-    # TODO
-    println("In file resolution.jl, in method heuristicSolve(), TODO: fix input and output, define the model")
-    
-end 
+    if count(==(regionId), grid) >= regionSize
+        return false
+    end
+
+    grid[row, col] = regionId
+    isValid = true
+
+    cellsToCheck = [(row, col), (row-1, col), (row+1, col), (row, col-1), (row, col+1)]
+
+    for (i, j) in cellsToCheck
+        if 1 <= i <= n && 1 <= j <= m && clues[i, j] != -1
+            if grid[i, j] != 0
+                confirmedWalls = 0
+                potentialWalls = 0
+
+                for (rowDelta, colDelta) in [(-1,0), (1,0), (0,-1), (0,1)]
+                    nextRow, nextCol = i + rowDelta, j + colDelta
+
+                    if nextRow < 1 || nextRow > n || nextCol < 1 || nextCol > m
+                        confirmedWalls += 1
+                        potentialWalls += 1
+                    else
+                        if grid[nextRow, nextCol] == 0
+                            potentialWalls += 1
+                        elseif grid[nextRow, nextCol] != grid[i, j]
+                            confirmedWalls += 1
+                            potentialWalls += 1
+                        end
+                    end
+                end
+
+                if confirmedWalls > clues[i, j]
+                    isValid = false
+                    break
+                end
+
+                if potentialWalls < clues[i, j]
+                    isValid = false
+                    break
+                end
+            end
+        end
+    end
+
+    grid[row, col] = 0
+
+    return isValid
+end
+
+"""
+Check that each region forms one connected component of the expected size.
+"""
+function checkConnectivity(grid::Matrix{Int}, n::Int, m::Int, k::Int, regionSize::Int)
+    visited = falses(n, m)
+
+    for regionId in 1:k
+        startRow, startCol = 0, 0
+        for i in 1:n, j in 1:m
+            if grid[i, j] == regionId
+                startRow, startCol = i, j
+                break
+            end
+        end
+
+        if startRow == 0 return false end
+
+        queue = [(startRow, startCol)]
+        visited[startRow, startCol] = true
+        count = 0
+
+        while !isempty(queue)
+            currentRow, currentCol = popfirst!(queue)
+            count += 1
+
+            for (rowDelta, colDelta) in [(-1,0), (1,0), (0,-1), (0,1)]
+                nextRow, nextCol = currentRow + rowDelta, currentCol + colDelta
+                if 1 <= nextRow <= n && 1 <= nextCol <= m && !visited[nextRow, nextCol] && grid[nextRow, nextCol] == regionId
+                    visited[nextRow, nextCol] = true
+                    push!(queue, (nextRow, nextCol))
+                end
+            end
+        end
+
+        if count != regionSize
+            return false
+        end
+    end
+    return true
+end
+
+"""
+Recursive engine that iterates through the board trying to fill it.
+"""
+function backtrackSolve!(grid::Matrix{Int}, clues::Matrix{Int}, n::Int, m::Int, k::Int, regionSize::Int, row::Int, col::Int)
+    if col > m
+        row += 1
+        col = 1
+    end
+
+    if row > n
+        return checkConnectivity(grid, n, m, k, regionSize)
+    end
+
+    if grid[row, col] != 0
+        return backtrackSolve!(grid, clues, n, m, k, regionSize, row, col + 1)
+    end
+
+    for regionId in 1:k
+        if isValidMove(grid, clues, row, col, regionId, regionSize)
+
+            grid[row, col] = regionId
+
+            if backtrackSolve!(grid, clues, n, m, k, regionSize, row, col + 1)
+                return true
+            end
+
+            grid[row, col] = 0
+        end
+    end
+
+    return false
+end
+
+"""
+Solve a Palisade puzzle with backtracking and pruning.
+"""
+function heuristicSolve(clues::Matrix{Int})
+    startTime = time()
+    n, m = size(clues)
+
+    regionSize = 5
+
+    if (n * m) % regionSize != 0
+        println("Error: Invalid board. $(n*m) cells cannot be divided into groups of $regionSize.")
+        return false, fill(0, n, m), time() - startTime
+    end
+
+    k = div(n * m, regionSize)
+    grid = zeros(Int, n, m)
+
+    isSolved = backtrackSolve!(grid, clues, n, m, k, regionSize, 1, 1)
+
+    solveTime = time() - startTime
+    return isSolved, grid, solveTime
+end
 
 """
 Solve all the instances contained in "../data" through CPLEX and heuristics
@@ -228,84 +370,65 @@ Remark: If an instance has previously been solved (either by cplex or the heuris
 """
 function solveDataSet()
 
-    dataFolder = "../data/"
-    resFolder = "../res/"
+    dataFolder = joinpath(@__DIR__, "..", "data")
+    resFolder = joinpath(@__DIR__, "..", "res")
 
-    # Array which contains the name of the resolution methods
-    resolutionMethod = ["cplex"]
-    #resolutionMethod = ["cplex", "heuristique"]
+    # Each pair contains the output folder name and the method label to display.
+    resolutionMethods = [("cplex", "cplex"), ("heuristic", "heuristic")]
 
     # Array which contains the result folder of each resolution method
-    resolutionFolder = resFolder .* resolutionMethod
+    resolutionFolders = [joinpath(resFolder, methodFolder) for (methodFolder, _) in resolutionMethods]
 
     # Create each result folder if it does not exist
-    for folder in resolutionFolder
-        if !isdir(folder)
-            mkdir(folder)
-        end
+    for folder in resolutionFolders
+        mkpath(folder)
     end
-            
+
     global isOptimal = false
     global solveTime = -1
 
+    instanceFiles = filter(x -> endswith(x, ".txt"), readdir(dataFolder))
+
+    if isempty(instanceFiles)
+        println("No instances found in: ", dataFolder)
+        return
+    end
+
     # For each instance
-    # (for each file in folder dataFolder which ends by ".txt")
-    for file in filter(x->occursin(".txt", x), readdir(dataFolder))  
-        
+    for file in instanceFiles
+
         println("-- Resolution of ", file)
-        t = readInputFile(dataFolder * file)
-        
+        t = readInputFile(joinpath(dataFolder, file))
+
         # For each resolution method
-        for methodId in 1:size(resolutionMethod, 1)
-            
-            outputFile = resolutionFolder[methodId] * "/" * file
+        for methodId in eachindex(resolutionMethods)
+            methodFolder, methodLabel = resolutionMethods[methodId]
+
+            outputFile = joinpath(resolutionFolders[methodId], file)
 
             # If the instance has not already been solved by this method
             if !isfile(outputFile)
-                
-                fout = open(outputFile, "w")  
+
+                fout = open(outputFile, "w")
 
                 resolutionTime = -1
                 isOptimal = false
-                
-                # If the method is cplex
-                if resolutionMethod[methodId] == "cplex"
-                    
+
+                # If the method is CPLEX
+                if methodFolder == "cplex"
+
                     # Solve it and get the results
                     isOptimal, x, yh, yv, resolutionTime = cplexSolve(t)
 
+
                 # If the method is one of the heuristics
                 else
-                    
-                    isSolved = false
 
-                    # Start a chronometer 
-                    startingTime = time()
-                    
-                    # While the grid is not solved and less than 100 seconds are elapsed
-                    while !isOptimal && resolutionTime < 100
-                        
-                        # TODO 
-                        println("In file resolution.jl, in method solveDataSet(), TODO: fix heuristicSolve() arguments and returned values")
-                        
-                        # Solve it and get the results
-                        isOptimal, resolutionTime = heuristicSolve()
+                    isOptimal, solvedGrid, resolutionTime = heuristicSolve(t)
 
-                        # Stop the chronometer
-                        resolutionTime = time() - startingTime
-                        
-                    end
-
-                    # Write the solution (if any)
-                    if isOptimal
-
-                        # TODO
-                        println("In file resolution.jl, in method solveDataSet(), TODO: write the heuristic solution in fout")
-                        
-                    end 
                 end
 
-                println(fout, "solveTime = ", resolutionTime) 
+                println(fout, "solveTime = ", resolutionTime)
                 println(fout, "isOptimal = ", isOptimal)
                 close(fout)
             end
@@ -313,10 +436,10 @@ function solveDataSet()
 
             # Display the results obtained with the method on the current instance
             include(outputFile)
-            println(resolutionMethod[methodId], " optimal: ", isOptimal)
-            println(resolutionMethod[methodId], " time: " * string(round(solveTime, sigdigits=2)) * "s\n")
-        end         
-    end 
+            println(methodLabel, " optimal: ", isOptimal)
+            println(methodLabel, " time: " * string(round(solveTime, sigdigits=2)) * "s\n")
+        end
+    end
 end
 
 function connectedComponents(cells::Vector{Tuple{Int, Int}}, nbRows::Int64, nbCols::Int64)
