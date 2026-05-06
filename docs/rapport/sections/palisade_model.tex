@@ -353,9 +353,17 @@ Cette quantité est donc linéaire en \(nm\), c'est-à-dire en \(N\). Comme \(K 
 O\big((\card{\mathcal{A}} + \card{\mathcal{C}})K\big) = O(N^2).
 \]
 
-Autrement dit, la taille du modèle croît quadratiquement avec le nombre de cases dès que l'on ajoute la connexité par flot. Cette augmentation se répercute à la fois sur l'espace mémoire nécessaire et sur le temps de résolution, car chaque n\oe ud du \textit{branch-and-bound} doit manipuler une relaxation linéaire plus grande.
+Autrement dit, la taille du modèle croît quadratiquement avec le nombre de cases dès que l'on ajoute la connexité par flot. Cette estimation décrit bien la taille de la formulation, mais elle ne suffit pas, à elle seule, à prédire le temps total de résolution. En pratique, un problème mixte en nombres entiers reste combinatoire : le temps dépend aussi du nombre de n\oe uds explorés, de la qualité des relaxations linéaires, des symétries du modèle et des coupes ajoutées pendant la recherche. Un modèle plus gros peut donc parfois être plus rapide s'il guide mieux le \textit{branch-and-bound}.
 
-Pour de petites ou moyennes instances, cette formulation reste tout à fait exploitable. En revanche, pour des grilles plus grandes, il est souvent plus efficace de conserver un modèle de base plus léger et de traiter la connexité dynamiquement par \textit{callback}.
+Pour fixer les ordres de grandeur, considérons une grille \(12 \times 15\) avec \(s = 5\). On a alors \(N = 180\), \(K = 36\) et \(\card{\mathcal{A}} = 333\). Le modèle de base contient \(6480\) variables \(x\), \(333\) variables \(y\) et \(11988\) variables \(z\), soit \(18801\) variables au total. La formulation par flot ajoute ensuite \(6480\) variables \(r\) et \(23976\) variables \(f\), soit \(30456\) variables supplémentaires, ainsi que \(36 + 6480 + 47952 + 6480 = 60948\) contraintes supplémentaires. Le principal intérêt du \textit{callback} est donc d'éviter d'imposer ce surcoût structurel à chaque relaxation résolue par CPLEX.
+
+Cela ne signifie pas pour autant que le \textit{callback} est gratuit. Dans l'implémentation actuelle, il n'est appelé que sur des solutions entières candidates. Lorsqu'il est activé, il charge toutes les valeurs de \texttt{x}, puis, pour chaque région \(p\), il rescane toute la grille pour reconstruire l'ensemble des cases affectées à \(p\). Comme ce balayage coûte \(O(N)\) par région et qu'il y a \(K = N/s\) régions, le coût de séparation est lui aussi de l'ordre de \(O(NK) = O(N^2)\) par appel lorsque \(s\) est fixé.
+
+En revanche, la fonction \texttt{connectedComponents} n'est pas le principal goulet d'étranglement ici. Chaque région contient exactement \(s\) cases, donc avec \(s = 5\), le test de connexité d'une région ne manipule qu'un nombre constant de cases. Son coût cumulé sur toutes les régions reste donc linéaire en \(N\). Le coût dominant provient surtout du balayage répété des variables d'affectation et du nombre total d'appels du \textit{callback}.
+
+Cela explique pourquoi un \textit{callback} peut déjà être lent en pratique sur une grille \(12 \times 15\) sans que cela contredise l'analyse précédente. Dans notre code, CPLEX est forcé à utiliser un seul thread pour le \textit{callback}. De plus, dès qu'une région déconnectée est détectée, une seule coupe est ajoutée, puis le \textit{callback} rend immédiatement la main au solveur. Une solution très déconnectée peut donc nécessiter plusieurs rappels successifs. Enfin, le modèle de base est plus compact, mais aussi plus faible que la formulation par flot, car la connexité n'est pas imposée dans la relaxation linéaire. CPLEX peut alors visiter de nombreuses solutions entières déconnectées avant de converger.
+
+Pour de petites ou moyennes instances, cette approche peut être très avantageuse. En revanche, elle ne garantit pas d'être toujours plus rapide qu'une formulation par flot. Selon les instances, le modèle avec \textit{callback} peut bénéficier d'un modèle initial plus compact, tandis que le modèle avec flot, bien que plus gros, peut aussi être plus efficace parce qu'il impose la connexité dès la relaxation.
 
 \subsubsection{Principe du callback}
 
@@ -400,11 +408,13 @@ En revanche, si au moins une paire du bord relie \(W\) à une autre case de la m
 La coupe autorise alors \(\sum_{c \in W} x_{c,p} = \card{W}\), car \(W\) n'est plus une composante isolée.
 
 
+Dans l'implémentation de ce projet, dès qu'une région déconnectée est détectée, le \textit{callback} ajoute une coupe pour la première composante stricte trouvée puis redonne la main à CPLEX. Si d'autres composantes interdites subsistent, elles seront coupées lors d'appels ultérieurs.
+
 Le \textit{callback} consiste donc à répéter les étapes suivantes :
 \begin{enumerate}
     \item résoudre le modèle de base ;
     \item détecter les régions déconnectées dans la solution entière candidate ;
-    \item ajouter une coupe de connexité pour chaque composante interdite ;
+    \item ajouter une coupe de connexité pour une composante interdite détectée ;
     \item relancer la recherche jusqu'à obtenir une solution où toutes les régions sont connexes.
 \end{enumerate}
 
