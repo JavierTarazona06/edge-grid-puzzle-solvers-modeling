@@ -273,8 +273,8 @@ Prerequisites:
 """
 function resultsArray(outputFile::String)
     
-    resultFolder = "../res/"
-    dataFolder = "../data/"
+    resultFolder = "res/"
+    dataFolder = "data/"
     
     # Maximal number of files in a subfolder
     maxSize = 0
@@ -344,7 +344,7 @@ function resultsArray(outputFile::String)
     end
 
     # Only keep one string for each instance solved
-    unique(solvedInstances)
+    solvedInstances = unique(solvedInstances)
 
     # For each resolution method, add two columns in the array
     for folder in folderName
