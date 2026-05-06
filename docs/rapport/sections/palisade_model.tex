@@ -227,7 +227,11 @@ f^{p}_{uv} \leq 4x_{v,p}
 \qquad \forall (u,v),\; \forall p \in \mathcal{P}
 \]
 
-Ces inégalités signifient que si l'arc \((u,v)\) appartient à la région \(p\), alors le flot qui y circule peut prendre une valeur comprise entre \(1\) et \(s-1\), selon la quantité de flot qu'il reste à transmettre. À l'intérieur d'une région de taille \(s\), la racine peut en effet envoyer au plus \(s-1\) unités, puis cette quantité décroît progressivement jusqu'à la dernière unité de flot.
+Ces inégalités signifient que si les deux extrémités de l'arc \((u,v)\) appartiennent à la région \(p\), alors le flot qui y circule est borné entre \(0\) et \(s-1\). Plus précisément, les contraintes imposent seulement
+\[
+0 \leq f^{p}_{uv} \leq s-1.
+\]
+Un arc intérieur à la région peut donc porter un flot nul ; il n'est pas nécessaire que chaque arc transporte effectivement une unité ou plus. À l'intérieur d'une région de taille \(s\), la racine peut envoyer au plus \(s-1\) unités au total vers les autres cases de la région, puis cette quantité se répartit sur les arcs utiles au transport.
 
 On rappelle également que sur un arc correspondant à une palissade, le flot est nécessairement nul. En effet, si \(u\) et \(v\) appartiennent à deux régions différentes, alors pour une région \(p\) fixée, l'une des deux variables \(x_{u,p}\) ou \(x_{v,p}\) vaut \(0\). L'une des deux contraintes précédentes impose donc \(f^{p}_{uv} \leq 0\). Comme on a déjà défini \(f^{p}_{uv} \geq 0\), on obtient finalement \(f^{p}_{uv} = 0\).
 
@@ -307,7 +311,7 @@ x_{c,p},\; y_{uv},\; z_{uv,p},\; r_{c,p} \in \binary,
 f^{p}_{uv} \geq 0
 \]
 
-Cette formulation permet donc de modéliser le jeu \textit{Palisade} comme un programme linéaire en nombres entiers.
+Cette formulation permet donc de modéliser le jeu \textit{Palisade} comme un problème de \textit{Mixed-Integer Programming} (MIP), c'est-à-dire un programme d'optimisation avec objectif linéaire et contraintes linéaires, mais mélangeant des variables entières et des variables continues. Ici, \(x_{c,p}\), \(y_{uv}\), \(z_{uv,p}\) et \(r_{c,p}\) sont binaires, tandis que \(f^{p}_{uv}\) est une variable continue. Lorsque les variables binaires \(x\) et \(r\) sont fixées, le sous-problème de flot conserve une interprétation en unités à transmettre dans la région, mais le modèle n'impose pas que chaque variable \(f^{p}_{uv}\) soit entière. Si l'on voulait rendre le flot lui-même discret, il faudrait déclarer \(f^{p}_{uv}\) entière, ce qui alourdirait encore la formulation. Cette distinction est importante : un programme linéaire pur peut être résolu en temps polynomial, alors qu'un MIP est beaucoup plus difficile en général à cause des contraintes d'intégralité.
 
 \subsection{Traitement de la règle difficile par callback}
 
@@ -353,9 +357,19 @@ Cette quantité est donc linéaire en \(nm\), c'est-à-dire en \(N\). Comme \(K 
 O\big((\card{\mathcal{A}} + \card{\mathcal{C}})K\big) = O(N^2).
 \]
 
-Autrement dit, la taille du modèle croît quadratiquement avec le nombre de cases dès que l'on ajoute la connexité par flot. Cette estimation décrit bien la taille de la formulation, mais elle ne suffit pas, à elle seule, à prédire le temps total de résolution. En pratique, un problème mixte en nombres entiers reste combinatoire : le temps dépend aussi du nombre de n\oe uds explorés, de la qualité des relaxations linéaires, des symétries du modèle et des coupes ajoutées pendant la recherche. Un modèle plus gros peut donc parfois être plus rapide s'il guide mieux le \textit{branch-and-bound}.
+Autrement dit, la taille du modèle croît quadratiquement avec le nombre de cases dès que l'on ajoute la connexité par flot. Il faut toutefois éviter une confusion fréquente : utiliser une formulation par flot ne signifie pas que l'on dispose soudain d'un algorithme polynomial pour \textit{Palisade}. Cela signifie seulement, d'une part, que la contrainte de connexité peut être exprimée avec un nombre polynomial de variables et de contraintes, et, d'autre part, que vérifier la connexité d'une solution candidate fixée se fait en temps polynomial par des outils de graphe. Le modèle complet de \texttt{palisade/src/resolution.jl} reste néanmoins un MIP avec des variables binaires, et c'est cette partie qui rend la résolution difficile. CPLEX doit toujours effectuer un \textit{branch-and-bound}, qui n'est pas polynomial en général.
 
-Pour fixer les ordres de grandeur, considérons une grille \(12 \times 15\) avec \(s = 5\). On a alors \(N = 180\), \(K = 36\) et \(\card{\mathcal{A}} = 333\). Le modèle de base contient \(6480\) variables \(x\), \(333\) variables \(y\) et \(11988\) variables \(z\), soit \(18801\) variables au total. La formulation par flot ajoute ensuite \(6480\) variables \(r\) et \(23976\) variables \(f\), soit \(30456\) variables supplémentaires, ainsi que \(36 + 6480 + 47952 + 6480 = 60948\) contraintes supplémentaires. Le principal intérêt du \textit{callback} est donc d'éviter d'imposer ce surcoût structurel à chaque relaxation résolue par CPLEX.
+Cette estimation décrit donc bien la taille de la formulation, mais elle ne suffit pas, à elle seule, à prédire le temps total de résolution. En pratique, un problème mixte en nombres entiers reste combinatoire : le temps dépend aussi du nombre de n\oe uds explorés, de la qualité des relaxations linéaires, des symétries du modèle et des coupes ajoutées pendant la recherche. Un modèle plus gros peut donc parfois être plus rapide s'il guide mieux le \textit{branch-and-bound}.
+
+Pour fixer les ordres de grandeur, considérons une grille \(12 \times 15\) avec \(s = 5\). On a alors \(N = 180\), \(K = 36\) et \(\card{\mathcal{A}} = 333\). Le modèle de base contient \(6480\) variables \(x\), \(333\) variables \(y\) et \(11988\) variables \(z\), soit \(18801\) variables au total. La formulation par flot ajoute ensuite \(6480\) variables \(r\) et \(23976\) variables \(f\), soit \(30456\) variables supplémentaires, ainsi que \(36 + 6480 + 47952 + 6480 = 60948\) contraintes supplémentaires.
+
+Le bon point de comparaison n'est donc pas ``flot = polynomial'' contre ``callback = nécessaire car le flot serait exponentiel''. La comparaison pertinente est la suivante :
+\begin{itemize}
+    \item le modèle avec flot est plus gros, mais sa formulation est plus forte ;
+    \item le modèle avec \textit{callback} est plus compact au départ, mais sa relaxation est plus faible et les coupes ne sont ajoutées que lorsqu'elles deviennent nécessaires.
+\end{itemize}
+
+L'intérêt principal du \textit{callback} est alors d'éviter d'imposer ce surcoût structurel à chaque relaxation résolue par CPLEX. Avec la formulation par flot, chaque n\oe ud du \textit{branch-and-bound} doit résoudre une relaxation linéaire plus grande, car toutes les variables de flot et toutes les contraintes de connexité sont déjà présentes. Avec un \textit{callback}, le modèle initial est plus léger, donc chaque relaxation peut être moins coûteuse. En contrepartie, le solveur peut devoir examiner de nombreuses solutions entières déconnectées avant que les coupes ajoutées dynamiquement ne suffisent à imposer la connexité.
 
 Cela ne signifie pas pour autant que le \textit{callback} est gratuit. Dans l'implémentation actuelle, il n'est appelé que sur des solutions entières candidates. Lorsqu'il est activé, il charge toutes les valeurs de \texttt{x}, puis, pour chaque région \(p\), il rescane toute la grille pour reconstruire l'ensemble des cases affectées à \(p\). Comme ce balayage coûte \(O(N)\) par région et qu'il y a \(K = N/s\) régions, le coût de séparation est lui aussi de l'ordre de \(O(NK) = O(N^2)\) par appel lorsque \(s\) est fixé.
 
