@@ -182,30 +182,36 @@ function cplexSolve(t::Matrix{Int64}; regionSize::Int64=5, printValues::Bool=fal
                     # 0.9 and not ==1 used for tolerance protection
                 cells = [(i, j) for i in 1:nbRows, j in 1:nbCols if x_val[i, j, p] > 0.9]
 
+                # Get the connected components of the region
                 components = connectedComponents(cells, nbRows, nbCols)
 
                 if length(components) > 1
+                    # The region is not well formed
+
+                    # Get the first component as a set
                     W = components[1]
                     Wset = Set(W)
 
+                    # List to store zh and zv variables to check connectivity
                     borderTerms = Any[]
 
                     for (i, j) in W
+                        # Only if neighbors are not in the Wset
 
                         if i > 1 && !((i-1, j) in Wset)
-                            push!(borderTerms, zh[i-1, j, p])
+                            push!(borderTerms, zh[i-1, j, p]) # Get value if upper cell is also at region p
                         end
 
                         if i < nbRows && !((i+1, j) in Wset)
-                            push!(borderTerms, zh[i, j, p])
+                            push!(borderTerms, zh[i, j, p]) # Get value if cell beneath is also at region p
                         end
 
                         if j > 1 && !((i, j-1) in Wset)
-                            push!(borderTerms, zv[i, j-1, p])
+                            push!(borderTerms, zv[i, j-1, p]) # Get value if left cell is also at region p
                         end
 
                         if j < nbCols && !((i, j+1) in Wset)
-                            push!(borderTerms, zv[i, j, p])
+                            push!(borderTerms, zv[i, j, p]) # Get value if right cell is also at region p
                         end
                     end
 
@@ -387,43 +393,64 @@ function solveDataSet()
 end
 
 function connectedComponents(cells::Vector{Tuple{Int, Int}}, nbRows::Int64, nbCols::Int64)
+    """
+    SPlit the given cells into connected groups
+
+        cells : Cells of a given region
+        nbrows : Rows of the original grid
+        nbcols : Columns of the original grid
+    """
 
     remaining = Set(cells)
     components = Vector{Vector{Tuple{Int, Int}}}()
 
+    # While there are still cell to be split
     while !isempty(remaining)
+
+        # We pop the first cell of the set
         startCell = first(remaining)
         delete!(remaining, startCell)
 
+        # To store cell connected to the current component. Vector of cells
         component = Tuple{Int, Int}[]
+
+        # Cells to explore next to the current cell
         stack = [startCell]
 
         while !isempty(stack)
+            # Pop cell from stack and put it in the component
             cell = pop!(stack)
             push!(component, cell)
 
             i, j = cell
+
+            # Vector used to store cell neighbors
             neighbors = Tuple{Int, Int}[]
 
             if i > 1
-                push!(neighbors, (i-1, j))
+                push!(neighbors, (i-1, j))      # Get upper neighbor
             end
             if i < nbRows
-                push!(neighbors, (i+1, j))
+                push!(neighbors, (i+1, j))      # Get beneath neighbor
             end
             if j > 1
-                push!(neighbors, (i, j-1))
+                push!(neighbors, (i, j-1))      # Get left neighbor
             end
             if j < nbCols
-                push!(neighbors, (i, j+1))
+                push!(neighbors, (i, j+1))      # Get right neighbor
             end
 
+            # For each neighbor, if has not been taken yet
+                # pop it from set and put it in stack to explore connected components
             for neighbor in neighbors
                 if neighbor in remaining
                     delete!(remaining, neighbor)
                     push!(stack, neighbor)
                 end
             end
+
+            # As we are analysing elements of the region
+             # If those elements are not adjacent, components will be made
         end
 
         push!(components, component)
