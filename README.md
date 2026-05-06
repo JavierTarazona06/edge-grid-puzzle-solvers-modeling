@@ -191,16 +191,12 @@ t = readInputFile("../data/instanceTest.txt")
 isOptimal, x, yh, yv, solveTime = cplexSolve(t)
 ```
 
+The function `cplexSolve` also has an optional keyword argument `printValues=false` by default. If you call `cplexSolve(t; printValues=true)`, it prints the returned values with `println(...)`: `isOptimal`, `x`, `yh`, `yv`, and `solveTime`.
+
 You can also run steps 1 to 5 in one command and keep the variables available in the Julia session:
 
 ```bash
-cd palisade && julia --project=. -i -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); include("resolution.jl"); global t = readInputFile("../data/instanceTest.txt"); global isOptimal, x, yh, yv, solveTime = cplexSolve(t)'
-```
-
-Or run the full fixed-instance test in one shell command:
-
-```bash
-cd palisade && julia --project=. -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); include("resolution.jl"); t = readInputFile("../data/instanceTest.txt"); isOptimal, x, yh, yv, solveTime = cplexSolve(t); println("isOptimal = ", isOptimal); println("solveTime = ", solveTime)'
+cd palisade && julia --project=. -i -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); include("resolution.jl"); global t = readInputFile("../data/instanceTest.txt"); global isOptimal, x, yh, yv, solveTime = cplexSolve(t; printValues=true)'
 ```
 
 6. Display the main result values:
@@ -221,14 +217,10 @@ println("x[:,:,1] = ")
 println(JuMP.value.(x[:, :, 1]))
 ```
 
-To check explicitly that the callback returned connected regions:
+To check explicitly that the callback returned connected regions, run:
 
 ```julia
-vals = JuMP.value.(x)
-nbRows, nbCols = size(t)
-nbRegions = div(nbRows * nbCols, 5)
-connected = all(length(connectedComponents([(i, j) for i in 1:nbRows, j in 1:nbCols if vals[i, j, p] > 0.9], nbRows, nbCols)) == 1 for p in 1:nbRegions)
-println("connected = ", connected)
+checkConnectedRegions(t, x)
 ```
 
 This requires a working local CPLEX installation and license.

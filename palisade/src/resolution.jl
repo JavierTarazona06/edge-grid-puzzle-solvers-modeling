@@ -10,7 +10,7 @@ TOL = 0.00001
 """
 Solve an instance with CPLEX
 """
-function cplexSolve(t::Matrix{Int64})
+function cplexSolve(t::Matrix{Int64}; printValues::Bool=false)
 
 
     nbRows = size(t, 1)
@@ -202,11 +202,46 @@ function cplexSolve(t::Matrix{Int64})
     # Solve the model
     optimize!(m)
 
+    isOptimal = JuMP.is_solved_and_feasible(m)
+    solveTime = time() - start
+
+    if printValues
+        println("isOptimal is ", isOptimal)
+        println("x is ", JuMP.value.(x))
+        println("yh is ", JuMP.value.(yh))
+        println("yv is ", JuMP.value.(yv))
+        println("solveTime is ", solveTime)
+    end
+
     # Return:
     # 1 - true if an optimum is found
     # 2 - the resolution time
-    return JuMP.is_solved_and_feasible(m), x, yh, yv, time() - start
+    return isOptimal, x, yh, yv, solveTime
     
+end
+
+"""
+Check that all regions returned by cplexSolve are connected.
+"""
+function checkConnectedRegions(t::Matrix{Int64}, x)
+
+    vals = JuMP.value.(x)
+    nbRows, nbCols = size(t)
+    nbRegions = div(nbRows * nbCols, 5)
+
+    connected = all(
+        length(
+            connectedComponents(
+                [(i, j) for i in 1:nbRows, j in 1:nbCols if vals[i, j, p] > 0.9],
+                nbRows,
+                nbCols,
+            ),
+        ) == 1 for p in 1:nbRegions
+    )
+
+    println("connected = ", connected)
+
+    return connected
 end
 
 """
