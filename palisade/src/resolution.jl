@@ -1,22 +1,36 @@
 # This file contains methods to solve an instance (heuristically or with CPLEX)
-using CPLEX
-using JuMP
-import MathOptInterface as MOI
+using CPLEX                                 # IBM's Mathematical Optimization Solver
+using JuMP                                  # Julia's package for Mathematical Optimization
+import MathOptInterface as MOI              # Low Level interface of JUMP, used for CPLEX callbacks
 
 include("generation.jl")
 
-TOL = 0.00001
+TOL = 0.00001                               # Tolerance for numerical issues in the callback
 
 """
 Solve an instance with CPLEX
 """
-function cplexSolve(t::Matrix{Int64}; printValues::Bool=false)
+function cplexSolve(t::Matrix{Int64}; regionSize::Int64=5, printValues::Bool=false)
+    """
+    Solve an instance with CPLEX
 
+        t : Game cells
+        regionSize : Number of cells in each region
+        printValues : If true, the returned values are printed
+    """
 
-    nbRows = size(t, 1)
-    nbCols = size(t, 2)
-    regionSize = 5
-    nbRegions = div(nbRows * nbCols, regionSize)
+    nbRows = size(t, 1)                                      # Get number of rows. Indexed with 1
+    nbCols = size(t, 2)                                      # Get number of columns. Indexed with 2
+
+    # Check region size is positive and divides the area of the grid
+    if regionSize <= 0
+        error("regionSize must be strictly positive.")
+    end
+    if (nbRows * nbCols) % regionSize != 0
+        error("regionSize must divide area nbRows * nbCols.")
+    end
+
+    nbRegions = div(nbRows * nbCols, regionSize)              # Get number of regions
 
     # Create the model
     m = Model(CPLEX.Optimizer)
@@ -25,7 +39,7 @@ function cplexSolve(t::Matrix{Int64}; printValues::Bool=false)
     # Variables 
     # -----------------------------
 
-    # Cell-to-region assignment - x[row, col, region]
+    # Cell-to-region assignment - x[row, col, region] - Binary variable
     @variable(m, x[1:nbRows, 1:nbCols, 1:nbRegions], Bin)
 
     # Palisades between vertically adjacent cells
@@ -63,9 +77,10 @@ function cplexSolve(t::Matrix{Int64}; printValues::Bool=false)
         @constraint(m, sum(x[i, j, p] for i in 1:nbRows, j in 1:nbCols) == regionSize)
     end
 
+
     # Linearization and belonging of neighboring cells to the same region
 
-        # Linearization on vertically adjacent cells
+        # 1. Linearization on vertically adjacent cells
     for i in 1:nbRows-1
         for j in 1:nbCols
             for p in 1:nbRegions
@@ -76,7 +91,7 @@ function cplexSolve(t::Matrix{Int64}; printValues::Bool=false)
         end
     end
 
-        # Linearization on horizontally adjacent cells
+        # 2. Linearization on horizontally adjacent cells
     for i in 1:nbRows
         for j in 1:nbCols-1
             for p in 1:nbRegions
@@ -88,12 +103,15 @@ function cplexSolve(t::Matrix{Int64}; printValues::Bool=false)
     end
 
     # Palisade definition
+
+        # 1. Vertically
     for i in 1:nbRows-1
         for j in 1:nbCols
             @constraint(m, yh[i, j] + sum(zh[i, j, p] for p in 1:nbRegions) == 1)
         end
     end
 
+        # 2. Horizontally
     for i in 1:nbRows
         for j in 1:nbCols-1
             @constraint(m, yv[i, j] + sum(zv[i, j, p] for p in 1:nbRegions) == 1)
@@ -108,32 +126,32 @@ function cplexSolve(t::Matrix{Int64}; printValues::Bool=false)
 
                 # Count the borders of the grid that are adjacent to the cell (i, j)
                 if i == 1
-                    borderCount += 1
+                    borderCount += 1                    # Top Border grid
                 end
                 if i == nbRows
-                    borderCount += 1
+                    borderCount += 1                    # Bottom Border grid
                 end
                 if j == 1
-                    borderCount += 1
+                    borderCount += 1                    # Left Border grid
                 end
                 if j == nbCols
-                    borderCount += 1
+                    borderCount += 1                    # Right Border grid
                 end
 
                 expr = borderCount
 
                 # Add the palisades adjacent to the cell (i, j). Not borders of the grid.
                 if i > 1
-                    expr += yh[i-1, j]
+                    expr += yh[i-1, j] # Up cell border. Not grid
                 end
                 if i < nbRows
-                    expr += yh[i, j]
+                    expr += yh[i, j] # Beneath cell border. Not grid
                 end
                 if j > 1
-                    expr += yv[i, j-1]
+                    expr += yv[i, j-1] # Left cell border. Not grid
                 end
                 if j < nbCols
-                    expr += yv[i, j]
+                    expr += yv[i, j] # Right cell border. Not grid
                 end
 
                 @constraint(m, expr == t[i, j])
@@ -142,14 +160,28 @@ function cplexSolve(t::Matrix{Int64}; printValues::Bool=false)
     end
 
     function callback_connectivity(cb_data::CPLEX.CallbackContext, context_id::Clong)
+        """
+        Callback function to compute the connectivity of the palisades.
+
+            cb_data : CPLEX callback context to inspect data and Constraints
+            context_id : CPLEX callback context identifier to access or not
+                Other contexts are threads, relaxation solution, branching...
+        """
 
         if isIntegerPoint(cb_data, context_id)
 
+            # JUMP loads the current solution values for de cb context
             CPLEX.load_callback_variable_primal(cb_data, context_id)
+
+            # Array of cell in a region variables got from cb context
             x_val = callback_value.(cb_data, x)
 
             for p in 1:nbRegions
+
+                #  Get cells from current region
+                    # 0.9 and not ==1 used for tolerance protection
                 cells = [(i, j) for i in 1:nbRows, j in 1:nbCols if x_val[i, j, p] > 0.9]
+
                 components = connectedComponents(cells, nbRows, nbCols)
 
                 if length(components) > 1
@@ -223,11 +255,11 @@ end
 """
 Check that all regions returned by cplexSolve are connected.
 """
-function checkConnectedRegions(t::Matrix{Int64}, x)
+function checkConnectedRegions(t::Matrix{Int64}, x; regionSize::Int64=5)
 
     vals = JuMP.value.(x)
     nbRows, nbCols = size(t)
-    nbRegions = div(nbRows * nbCols, 5)
+    nbRegions = div(nbRows * nbCols, regionSize)
 
     connected = all(
         length(
@@ -404,13 +436,23 @@ end
 Test if a callback was called because an integer solution was found.
 """
 function isIntegerPoint(cb_data::CPLEX.CallbackContext, context_id::Clong)
+    """
+    Is the call back on a integer candidate solution ?
 
-    if context_id != CPX_CALLBACKCONTEXT_CANDIDATE
+        cb_data : CPLEX callback context.
+        context_id : CPLEX callback context identifier.
+    """
+
+    if context_id != CPX_CALLBACKCONTEXT_CANDIDATE   # Candidate Integer solution ?
         return false
     end
 
-    ispoint_p = Ref{Cint}()
+    ispoint_p = Ref{Cint}()             # Allocate space for a C-int style integer, 
+                                            # required for the callback function
+    
+    # is this an actual candidate solution point?
     ret = CPXcallbackcandidateispoint(cb_data, ispoint_p)
 
+    # request_succeed AND The point is an integer candidate
     return ret == 0 && ispoint_p[] != 0
 end
