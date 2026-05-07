@@ -216,40 +216,40 @@ function cplexSolve(t::Matrix{Int64};
                 components = connectedComponents(cells, nbRows, nbCols)
 
                 if length(components) > 1
-                    W = components[1]
-                    Wset = Set(W)
+                    for W in components
+                        Wset = Set(W)
 
-                    borderTerms = Any[]
+                        borderTerms = Any[]
 
-                    for (i, j) in W
+                        for (i, j) in W
 
-                        if i > 1 && !((i-1, j) in Wset)
-                            push!(borderTerms, zh[i-1, j, p])
+                            if i > 1 && !((i-1, j) in Wset)
+                                push!(borderTerms, zh[i-1, j, p])
+                            end
+
+                            if i < nbRows && !((i+1, j) in Wset)
+                                push!(borderTerms, zh[i, j, p])
+                            end
+
+                            if j > 1 && !((i, j-1) in Wset)
+                                push!(borderTerms, zv[i, j-1, p])
+                            end
+
+                            if j < nbCols && !((i, j+1) in Wset)
+                                push!(borderTerms, zv[i, j, p])
+                            end
                         end
 
-                        if i < nbRows && !((i+1, j) in Wset)
-                            push!(borderTerms, zh[i, j, p])
+                        leftSide = sum(x[i, j, p] for (i, j) in W)
+                        rightSide = length(W) - 1
+
+                        if length(borderTerms) > 0
+                            rightSide += sum(borderTerms)
                         end
 
-                        if j > 1 && !((i, j-1) in Wset)
-                            push!(borderTerms, zv[i, j-1, p])
-                        end
-
-                        if j < nbCols && !((i, j+1) in Wset)
-                            push!(borderTerms, zv[i, j, p])
-                        end
+                        cstr = @build_constraint(leftSide <= rightSide)
+                        MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
                     end
-
-                    leftSide = sum(x[i, j, p] for (i, j) in W)
-                    rightSide = length(W) - 1
-
-                    if length(borderTerms) > 0
-                        rightSide += sum(borderTerms)
-                    end
-
-                    cstr = @build_constraint(leftSide <= rightSide)
-                    MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
-                    return
                 end
             end
         end
