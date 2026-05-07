@@ -1,0 +1,3 @@
+regionSize = 9
+solveTime = 6.794929504394531e-5
+isOptimal = true
