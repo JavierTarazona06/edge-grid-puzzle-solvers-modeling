@@ -123,7 +123,7 @@ JuliaSysimage.*
 /loopy/res/
 
 # palisade generated artifacts
-/palisade/res/
+#/palisade/res/
 
 # PyBuilder
 .pybuilder/
