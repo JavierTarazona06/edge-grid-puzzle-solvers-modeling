@@ -5,6 +5,37 @@ using Plots
 import GR
 
 """
+Save a Loopy instance in a text file.
+
+Empty cells are represented by -1 in Julia and by a blank space in the file.
+"""
+function saveInstance(grid::Matrix{Int64}, outputFile::String)
+
+    fout = open(outputFile, "w")
+
+    nbRows, nbCols = size(grid)
+
+    for i in 1:nbRows
+        for j in 1:nbCols
+
+            if grid[i, j] == -1
+                print(fout, " ")
+            else
+                print(fout, grid[i, j])
+            end
+
+            if j < nbCols
+                print(fout, ",")
+            end
+        end
+
+        println(fout)
+    end
+
+    close(fout)
+end
+
+"""
 Read an instance from an input file
 
 - Argument:
