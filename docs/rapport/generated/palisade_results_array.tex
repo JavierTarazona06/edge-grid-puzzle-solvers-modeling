@@ -1,0 +1,53 @@
+\documentclass{article}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{multicol}
+
+\setlength{\hoffset}{-18pt}
+\setlength{\oddsidemargin}{0pt}
+\setlength{\evensidemargin}{9pt}
+\setlength{\marginparwidth}{54pt}
+\setlength{\textwidth}{481pt}
+\setlength{\voffset}{-18pt}
+\setlength{\marginparsep}{7pt}
+\setlength{\topmargin}{0pt}
+\setlength{\headheight}{13pt}
+\setlength{\headsep}{10pt}
+\setlength{\footskip}{27pt}
+\setlength{\textheight}{668pt}
+
+\begin{document}
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+ \begin{tabular}{lrrrr}
+	\hline
+ & \multicolumn{2}{c}{\textbf{cplex}} & \multicolumn{2}{c}{\textbf{heuristic}}\\
+\textbf{Instance}  & \textbf{Time (s)} & \textbf{Optimal?}  & \textbf{Time (s)} & \textbf{Optimal?} \\\hline
+
+gen\_10x10\_reg20\_1.txt & timeout & timeout & timeout & timeout\\
+gen\_10x10\_reg20\_2.txt & timeout & timeout & timeout & timeout\\
+gen\_10x10\_reg20\_3.txt & timeout & timeout & timeout & timeout\\
+gen\_10x5\_reg10\_1.txt & 4.040224 & $\times$ & timeout & timeout\\
+gen\_10x5\_reg10\_2.txt & 20.682347 & $\times$ & timeout & timeout\\
+gen\_5x5\_reg5\_1.txt & 2.799594 & $\times$ & 0.003999 & $\times$\\
+gen\_5x5\_reg5\_2.txt & 0.071024 & $\times$ & 0.011257 & $\times$\\
+gen\_6x5\_reg6\_1.txt & 0.379551 & $\times$ & 0.033407 & $\times$\\
+gen\_6x5\_reg6\_2.txt & 0.123450 & $\times$ & 0.000210 & $\times$\\
+gen\_6x6\_reg12\_1.txt & 0.818965 & $\times$ & 0.122688 & $\times$\\
+gen\_6x6\_reg12\_2.txt & 0.990402 & $\times$ & timeout & timeout\\
+gen\_6x6\_reg4\_1.txt & 0.471831 & $\times$ & 0.001801 & $\times$\\
+gen\_6x6\_reg4\_2.txt & 0.064122 & $\times$ & 0.000068 & $\times$\\
+gen\_6x6\_reg6\_1.txt & 0.097264 & $\times$ & 5.017302 & $\times$\\
+gen\_6x6\_reg6\_2.txt & 0.890398 & $\times$ & 13.655802 & $\times$\\
+gen\_6x6\_reg9\_1.txt & 0.020252 & $\times$ & 8.213276 & $\times$\\
+gen\_6x6\_reg9\_2.txt & 0.464823 & $\times$ & 0.027979 & $\times$\\
+gen\_7x5\_reg7\_1.txt & 0.063857 & $\times$ & 0.000629 & $\times$\\
+gen\_7x5\_reg7\_2.txt & 0.465045 & $\times$ & 11.928600 & $\times$\\
+gen\_8x5\_reg8\_1.txt & 19.961523 & $\times$ & 0.283283 & $\times$\\
+gen\_8x5\_reg8\_2.txt & 0.086653 & $\times$ & timeout & timeout\\
+\hline\end{tabular}
+\end{center}
+
+
+\end{document}
