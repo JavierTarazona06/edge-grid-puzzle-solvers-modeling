@@ -434,6 +434,12 @@ Le \textit{callback} consiste donc à répéter les étapes suivantes :
 
 Il ne s'agit pas d'une heuristique, car on n'accepte jamais une solution déconnectée : chaque solution candidate qui viole la connexité est coupée par une contrainte valide. Le callback reste donc une méthode exacte, mais les contraintes de connexité ne sont ajoutées que lorsqu'elles deviennent nécessaires, ce qui permet de garder un modèle initial plus compact.
 
+\input{sections/palisade_display}
+\input{sections/palisade_generation}
+\input{sections/palisade_dataset}
+\input{sections/palisade_heuristic}
+\input{sections/palisade_analysis_results}
+
 \subsection{Problèmes rencontrés}
 
 Un problème important est apparu lors des tests sur deux instances de mêmes
@@ -502,3 +508,4 @@ Après cette correction, l'instance lente
 environ \(15.15\) secondes dans nos tests. Cela montre que, pour ce modèle, le
 temps de résolution dépend autant de la qualité des coupes ajoutées par le
 \textit{callback} que de la taille apparente de l'instance.
+

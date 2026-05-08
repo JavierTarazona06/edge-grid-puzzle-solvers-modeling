@@ -1,0 +1,45 @@
+\begingroup
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{table}[H]
+\centering
+\caption{Synthèse des performances par famille d'instances et par méthode.}
+\label{tab:palisade-performance}
+\begin{tabular}{llrrrr}
+\toprule
+Famille & Méthode & Résolues / total & Timeouts & Temps moyen (s) & Temps maximal (s)\\
+\midrule
+\texttt{5x5 reg5} & CPLEX & 2/2 & 0 & 1.44 & 2.80\\
+\texttt{5x5 reg5} & Heuristique & 2/2 & 0 & 0.01 & 0.01\\
+\midrule
+\texttt{6x5 reg6} & CPLEX & 2/2 & 0 & 0.25 & 0.38\\
+\texttt{6x5 reg6} & Heuristique & 2/2 & 0 & 0.02 & 0.03\\
+\midrule
+\texttt{7x5 reg7} & CPLEX & 2/2 & 0 & 0.26 & 0.47\\
+\texttt{7x5 reg7} & Heuristique & 2/2 & 0 & 5.96 & 11.93\\
+\midrule
+\texttt{6x6 reg4} & CPLEX & 2/2 & 0 & 0.27 & 0.47\\
+\texttt{6x6 reg4} & Heuristique & 2/2 & 0 & 0.00 & 0.00\\
+\midrule
+\texttt{6x6 reg6} & CPLEX & 2/2 & 0 & 0.49 & 0.89\\
+\texttt{6x6 reg6} & Heuristique & 2/2 & 0 & 9.34 & 13.66\\
+\midrule
+\texttt{6x6 reg9} & CPLEX & 2/2 & 0 & 0.24 & 0.46\\
+\texttt{6x6 reg9} & Heuristique & 2/2 & 0 & 4.12 & 8.21\\
+\midrule
+\texttt{6x6 reg12} & CPLEX & 2/2 & 0 & 0.90 & 0.99\\
+\texttt{6x6 reg12} & Heuristique & 1/2 & 1 & 0.12 & 0.12\\
+\midrule
+\texttt{8x5 reg8} & CPLEX & 2/2 & 0 & 10.02 & 19.96\\
+\texttt{8x5 reg8} & Heuristique & 1/2 & 1 & 0.28 & 0.28\\
+\midrule
+\texttt{10x5 reg10} & CPLEX & 2/2 & 0 & 12.36 & 20.68\\
+\texttt{10x5 reg10} & Heuristique & 0/2 & 2 & -- & --\\
+\midrule
+\texttt{10x10 reg20} & CPLEX & 0/3 & 3 & -- & --\\
+\texttt{10x10 reg20} & Heuristique & 0/3 & 3 & -- & --\\
+\midrule
+\bottomrule
+\end{tabular}
+\end{table}
+\endgroup

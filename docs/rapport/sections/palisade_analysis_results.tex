@@ -1,0 +1,55 @@
+\subsection{Analyse des Résultats et Performances}
+
+\input{generated/palisade_analysis_macros}
+
+\subsubsection{Protocole expérimental}
+
+L'analyse repose sur \PalisadeBenchmarkInstances{} instances générées automatiquement pour \textit{Palisade}, réparties en \PalisadeBenchmarkFamilies{} familles. Le fichier \texttt{instanceTest.txt} a été conservé comme test fonctionnel, mais il n'entre pas dans le benchmark présenté ici. Les deux méthodes comparées sont la résolution exacte par CPLEX et une résolution heuristique dédiée. Dans tous les cas, la limite de temps est fixée à \PalisadeTimeoutLimit{} secondes.
+
+Pour rester simple, nous ne gardons ici que les éléments les plus utiles à l'analyse. Le diagramme de performance est généré directement avec la fonction \texttt{performanceDiagram()}, et un tableau brut complet des résultats est produit séparément avec \texttt{resultsArray()}.
+
+Le Tableau~\ref{tab:palisade-families} résume les familles effectivement évaluées.
+
+\input{generated/palisade_table_families}
+
+\subsubsection{Comparaison globale entre l'heuristique et CPLEX}
+
+Le contraste global entre les deux approches est net. CPLEX résout \PalisadeCplexSolvedRatio{} instances du benchmark, contre \PalisadeHeuristicSolvedRatio{} pour l'heuristique. Ce résultat est cohérent avec l'implémentation : notre heuristique repose sur un \textit{backtracking} récursif en profondeur, avec deux règles de coupe simples, l'une sur la capacité des régions et l'autre sur la compatibilité locale avec les indices. En revanche, elle ne comporte ni ordre de choix plus élaboré, ni métaheuristique supplémentaire, et la connexité complète n'est vérifiée qu'à la fin d'une affectation entière.
+
+Le Tableau~\ref{tab:palisade-performance} donne une synthèse par famille. La Figure~\ref{fig:palisade-cactus} conserve le diagramme de performance classique : elle est utile pour comparer la vitesse sur les instances effectivement résolues, mais elle ne montre pas les \textit{timeouts} par construction.
+
+\input{generated/palisade_table_performance}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{imgs/palisade/palisade_performance_diagram.pdf}
+    \caption{Diagramme de performance de type \textit{cactus plot}. Seules les instances résolues y apparaissent.}
+    \label{fig:palisade-cactus}
+\end{figure}
+
+\subsubsection{Influence de la taille des instances}
+
+La taille de la grille reste le premier facteur de difficulté. Jusqu'aux petites et moyennes tailles, les deux méthodes restent utilisables, même si certaines familles sont déjà plus difficiles que d'autres. En revanche, l'heuristique commence à échouer systématiquement dès les instances de taille \(10 \times 5\), soit \PalisadeHeuristicFirstTimeoutCells{} cases. CPLEX tient plus longtemps : la plus grande taille effectivement résolue dans la limite fixée est \(10 \times 5\), soit \PalisadeCplexLargestSolvedCells{} cases. À l'étape suivante, \(10 \times 10\), soit \PalisadeCplexTimeoutCells{} cases, toutes les instances disponibles tombent en \textit{timeout}.
+
+Cette rupture se lit déjà dans le tableau de synthèse : les petites familles restent abordables, les instances \(10 \times 5\) marquent une limite claire pour l'heuristique, et les instances \(10 \times 10\) deviennent trop difficiles pour les deux méthodes dans le temps imparti.
+
+\subsubsection{Influence du type d'instance}
+
+La taille n'explique cependant pas tout. Le cas des grilles \(6 \times 6\) est particulièrement utile, car il garde \(N=36\) constant tout en faisant varier le nombre de régions. On passe ainsi de \texttt{6x6 reg4} à \texttt{6x6 reg12}, donc de grandes régions peu nombreuses à de petites régions plus nombreuses. Dans cette zone, CPLEX reste relativement stable, alors que l'heuristique change beaucoup plus de comportement : certaines familles sont résolues presque instantanément, d'autres demandent plusieurs secondes, et la famille \texttt{6x6 reg12} contient déjà un \textit{timeout}.
+
+La Figure~\ref{fig:palisade-regions-6x6} montre que, pour une même taille de grille, la structure combinatoire liée au nombre de régions modifie fortement la difficulté pratique.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{imgs/palisade/palisade_regions_6x6.pdf}
+    \caption{Influence du nombre de régions sur les instances \(6 \times 6\).}
+    \label{fig:palisade-regions-6x6}
+\end{figure}
+
+\subsubsection{Rôle des indices}
+
+Le contenu des indices visibles joue lui aussi un rôle important. Deux instances de même taille peuvent conduire à des temps de calcul très différents si les contraintes locales n'ont pas le même pouvoir discriminant. Le cas le plus parlant est donné par \PalisadeSlowContrastInstance{}, résolue par CPLEX en \PalisadeSlowContrastCplexTime{}~s, alors que \PalisadeFastContrastInstance{} est résolue en seulement \PalisadeFastContrastCplexTime{}~s. Le Tableau~\ref{tab:palisade-contrast} montre que la première instance est dominée par des indices de valeur \(2\), alors que la seconde contient davantage d'indices \(1\) et \(3\), qui ferment plus vite l'espace de recherche.
+
+La paire \texttt{10x5 reg10} montre aussi qu'une densité plus forte d'indices ne suffit pas, à elle seule, à garantir une résolution plus rapide. La bonne conclusion n'est donc pas « plus d'indices = plus facile », mais plutôt que la difficulté dépend de la densité, du type d'indices et de leur répartition dans la grille.
+
+\input{generated/palisade_table_contrasts}

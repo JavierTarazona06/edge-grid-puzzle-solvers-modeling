@@ -1,0 +1,3 @@
+regionSize = 3
+solveTime = timeout
+isOptimal = timeout
