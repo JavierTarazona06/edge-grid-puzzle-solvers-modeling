@@ -215,14 +215,21 @@ function cplexSolve(t::Matrix{Int64}; regionSize::Int64=5, printValues::Bool=fal
                         end
                     end
 
+                    # Sum of cell of W that belong to the region p
                     leftSide = sum(x[i, j, p] for (i, j) in W)
+                    # Number of cells in W - 1, to block that component and make model to look for another solution
                     rightSide = length(W) - 1
 
+                    # In the component there is a cell that can connects to cell not in the 
+                        # current component, but at the same region. So that makes possible to re-use that 
+                        # component as it is valid
                     if length(borderTerms) > 0
                         rightSide += sum(borderTerms)
                     end
 
+                    # Constrain addition to the model
                     cstr = @build_constraint(leftSide <= rightSide)
+                    # Adding lazy constraint to the call back
                     MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
                     return
                 end
@@ -232,6 +239,7 @@ function cplexSolve(t::Matrix{Int64}; regionSize::Int64=5, printValues::Bool=fal
 
     # CPLEX callbacks are used with one thread.
     MOI.set(m, MOI.NumberOfThreads(), 1)
+    # Registers the funciton callback_connectivity as the CPLEX Callback
     MOI.set(m, CPLEX.CallbackFunction(), callback_connectivity)
 
     # Start a chronometer
@@ -262,6 +270,9 @@ end
 Check that all regions returned by cplexSolve are connected.
 """
 function checkConnectedRegions(t::Matrix{Int64}, x; regionSize::Int64=5)
+    """
+    Post-solve check to confirm that each region has one exactly connected component
+    """
 
     vals = JuMP.value.(x)
     nbRows, nbCols = size(t)
