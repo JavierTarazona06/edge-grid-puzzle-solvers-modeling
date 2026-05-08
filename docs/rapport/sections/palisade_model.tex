@@ -518,3 +518,32 @@ sont toujours mesurées précisément, tandis que les cas trop coûteux sont
 signalés comme \texttt{timeout}. On obtient ainsi un jeu de résultats plus
 homogène, mieux adapté à l'analyse statistique et à la comparaison des
 méthodes.
+
+\subsection{Conclusion}
+
+Le jeu Palisade se prête bien à une modélisation par
+programmation linéaire en nombres entiers. La formulation construite permet
+d'exprimer de manière claire les contraintes de partition, de taille des
+régions, de placement des indices et de tracé des frontières.
+
+L'étude expérimentale montre cependant que la taille d'une grille ne suffit pas
+à expliquer, à elle seule, le temps de résolution. La répartition des indices,
+la qualité des coupes ajoutées dynamiquement et la présence de cas atypiques ont
+un effet direct sur les performances observées. Les ajustements introduits,
+comme la correction du \textit{callback} de connexité et l'ajout d'une limite de
+temps pour l'analyse, ont permis d'obtenir des résultats plus stables et plus
+pertinents pour la comparaison des méthodes dans le cadre de ce rapport.
+
+L'heuristique constitue aussi une méthode
+de base rapide sur les petites instances. Elle obtient des temps très faibles
+tant que la taille de la grille et la structure des régions restent modestes,
+mais ses performances se dégradent nettement dès que l'espace de recherche
+augmente. Les résultats montrent ainsi qu'elle devient beaucoup moins robuste à
+partir des familles de type \(10 \times 5\), où les \textit{timeouts}
+deviennent fréquents.
+
+L'intérêt principal de cette approche est donc de fournir un point de
+comparaison simple avec la méthode exacte. Elle permet de résoudre rapidement
+une partie des instances faciles, mais elle ne suffit pas, dans sa forme
+actuelle, pour traiter de manière fiable les cas les plus difficiles du
+benchmark.
