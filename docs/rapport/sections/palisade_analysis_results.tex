@@ -53,3 +53,19 @@ Le contenu des indices visibles joue lui aussi un rôle important. Deux instance
 La paire \texttt{10x5 reg10} montre aussi qu'une densité plus forte d'indices ne suffit pas, à elle seule, à garantir une résolution plus rapide. La bonne conclusion n'est donc pas « plus d'indices = plus facile », mais plutôt que la difficulté dépend de la densité, du type d'indices et de leur répartition dans la grille.
 
 \input{generated/palisade_table_contrasts}
+
+Pour les instances contrastées de type \(8 \times 5\), un seul temps heuristique exploitable est disponible (\SI{0.28}{\second}). Nous ne l'affichons pas dans la figure suivante, car un point isolé ne permet pas de comparer utilement le comportement de l'heuristique dans ce scénario.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{imgs/palisade/palisade_contrast_indices_8x5_3d.pdf}
+    \caption{Relation entre la composition des indices et le temps de résolution pour les instances contrastées de type \(8 \times 5\), pour CPLEX uniquement. L'axe \(x\) correspond au nombre d'indices de valeur 2, l'axe \(y\) au nombre total d'indices de valeur 1 et 3, et l'axe \(z\) au temps de résolution.}
+    \label{fig:palisade-contrast-indices-8x5-3d}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{imgs/palisade/palisade_contrast_indices_10x5_3d.pdf}
+    \caption{Relation entre la composition des indices et le temps de résolution pour les instances contrastées de type \(10 \times 5\). L'axe \(x\) correspond au nombre d'indices de valeur 2, l'axe \(y\) au nombre total d'indices de valeur 1 et 3, et l'axe \(z\) au temps de résolution.}
+    \label{fig:palisade-contrast-indices-10x5-3d}
+\end{figure}

@@ -489,23 +489,32 @@ end
 \end{verbatim}
 
 La correction consiste à parcourir toutes les composantes détectées avec
-l'instruction \texttt{for W in components}, puis à ajouter une coupe pour
-chaque composante \(W\). Il ne s'agit pas de rejeter
-plusieurs solutions candidates différentes en même temps, mais de rejeter
-plusieurs composantes incorrectes à l'intérieur d'une même solution candidate.
-Ainsi, CPLEX reçoit davantage d'information à chaque appel du
-\textit{callback}.
+\texttt{for W in components} et à ajouter une coupe pour chacune d'elles. Il ne
+s'agit pas de rejeter plusieurs solutions candidates différentes, mais
+d'éliminer plusieurs composantes incorrectes à l'intérieur d'une même solution
+candidate. CPLEX reçoit ainsi plus d'information à chaque appel du
+\textit{callback}, tout en conservant l'exactitude de la méthode, puisque chaque
+coupe reste une contrainte valide de connexité.
 
-Cette modification conserve l'exactitude de la méthode. Chaque coupe ajoutée
-reste une contrainte valide de connexité : elle interdit qu'une composante
-isolée reste affectée entièrement à la même région sans connexion avec le reste
-de cette région. En revanche, elle renforce beaucoup la séparation dynamique,
-car une seule solution candidate déconnectée permet maintenant d'ajouter
-plusieurs coupes utiles.
-
-Après cette correction, l'instance lente
+Après cette modification, l'instance lente
 \texttt{gen\_10x5\_reg10\_2.txt} est passée d'environ \(687.28\) secondes à
 environ \(15.15\) secondes dans nos tests. Cela montre que, pour ce modèle, le
 temps de résolution dépend autant de la qualité des coupes ajoutées par le
 \textit{callback} que de la taille apparente de l'instance.
 
+\subsubsection{Ajout d'une limite de temps pour l'analyse}
+
+Une autre solution pratique a consisté à fixer une limite de temps de
+\SI{100}{\second} pour chaque résolution avec CPLEX, à l'aide du paramètre
+\texttt{MOI.TimeLimitSec()} dans l'implémentation. L'objectif n'était pas de
+modifier le modèle, mais d'éviter qu'un petit nombre d'instances très difficiles
+monopolise tout le temps de calcul pendant la campagne expérimentale.
+
+Ce choix améliore la qualité de l'analyse comparative. Sans limite, certaines
+instances atypiques peuvent prendre un temps excessif, ce qui ralentit fortement
+la production des résultats globaux et déséquilibre l'étude. Avec un
+\textit{timeout} fixé à \SI{100}{\second}, les instances faciles et moyennes
+sont toujours mesurées précisément, tandis que les cas trop coûteux sont
+signalés comme \texttt{timeout}. On obtient ainsi un jeu de résultats plus
+homogène, mieux adapté à l'analyse statistique et à la comparaison des
+méthodes.
