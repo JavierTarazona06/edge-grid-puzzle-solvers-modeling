@@ -15,6 +15,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.10'
+
+      - name: Cache Julia artifacts
+        uses: julia-actions/cache@v2
+
+      - name: Generate Palisade report assets
+        env:
+          GKSwstype: "100"
+        run: |
+          cd palisade
+          julia --project=. -e 'using Pkg; Pkg.instantiate()'
+          julia --project=. src/analysis_results.jl
+
       - name: Configure GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5

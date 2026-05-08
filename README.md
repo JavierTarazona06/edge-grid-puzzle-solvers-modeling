@@ -350,10 +350,3 @@ julia --project=. src/analysis_results.jl
 ```
 
 This regenerates the Palisade tables and figures used in `docs/rapport/`.
-
-## Notes for contributors
-
-- Activate the matching Julia environment before running code from `palisade/`, `loopy/`, or `sudoku1.0/`.
-- Run Julia scripts from each puzzle's `src/` directory because paths are written relative to that location.
-- Result folders such as `res/` contain generated artifacts rather than hand-written source files.
-- Editor backup files and generated result folders are partially covered by `.gitignore`.
