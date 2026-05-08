@@ -260,12 +260,7 @@ function write_performance_table(rows, outputPath::String)
 end
 
 function write_contrast_table(rows, outputPath::String)
-    selected = [
-        "gen_8x5_reg8_1",
-        "gen_8x5_reg8_2",
-        "gen_10x5_reg10_1",
-        "gen_10x5_reg10_2",
-    ]
+    selected = contrast_instances()
 
     open(outputPath, "w") do io
         println(io, "\\begingroup")
@@ -299,6 +294,140 @@ function write_contrast_table(rows, outputPath::String)
         println(io, "\\end{table}")
         println(io, "\\endgroup")
     end
+end
+
+function contrast_instances()
+    return [
+        "gen_8x5_reg8_1",
+        "gen_8x5_reg8_2",
+        "gen_10x5_reg10_1",
+        "gen_10x5_reg10_2",
+    ]
+end
+
+function build_contrast_3d_figure(
+    rows,
+    selected::Vector{String},
+    outputPath::String;
+    methods::Vector{String} = ["CPLEX", "Heuristique"],
+)
+    selectedRows = [
+        row for row in rows
+        if row.instance in selected && row.method in methods
+    ]
+    plottedRows = [row for row in selectedRows if row.status == "solved"]
+    maxZ = isempty(plottedRows) ? 1.0 : maximum(row.solveTimeSec for row in plottedRows)
+    maxX = isempty(plottedRows) ? 1.0 : maximum(row.nb2 for row in plottedRows)
+    maxY = isempty(plottedRows) ? 1.0 : maximum(row.nb1 + row.nb3 for row in plottedRows)
+
+    p = plot(
+        xaxis = "Nombre d'indices 2",
+        yaxis = "Nb. d'indices 1 et 3",
+        zaxis = "Temps (s)",
+        legend = :topright,
+        camera = (42, 24),
+        xlims = (0, maxX + 2),
+        ylims = (0, maxY + 2),
+        zlims = (0, maxZ + max(1.0, 0.12 * maxZ)),
+        size = (900, 620),
+        right_margin = 16Plots.mm,
+        guidefontsize = 9,
+        tickfontsize = 8,
+    )
+
+    labelOffsets = Dict(
+        "CPLEX" => (0.85, 0.35, 3.0),
+        "Heuristique" => (-1.15, 0.65, 4.0),
+    )
+
+    for (method, marker, color) in [("CPLEX", :circle, :steelblue), ("Heuristique", :diamond, :darkorange)]
+        methodRows = [row for row in plottedRows if row.method == method]
+        xValues = [row.nb2 for row in methodRows]
+        yValues = [row.nb1 + row.nb3 for row in methodRows]
+        zValues = [row.solveTimeSec for row in methodRows]
+        labels = [format_float(row.solveTimeSec) for row in methodRows]
+
+        for i in eachindex(methodRows)
+            plot!(
+                p,
+                [xValues[i], xValues[i]],
+                [yValues[i], yValues[i]],
+                [0.0, zValues[i]],
+                label = "",
+                color = color,
+                alpha = 0.35,
+                linewidth = 1.5,
+                linestyle = :dash,
+            )
+            plot!(
+                p,
+                [0.0, xValues[i]],
+                [yValues[i], yValues[i]],
+                [0.0, 0.0],
+                label = "",
+                color = color,
+                alpha = 0.18,
+                linewidth = 1.1,
+                linestyle = :dot,
+            )
+            plot!(
+                p,
+                [xValues[i], xValues[i]],
+                [0.0, yValues[i]],
+                [0.0, 0.0],
+                label = "",
+                color = color,
+                alpha = 0.18,
+                linewidth = 1.1,
+                linestyle = :dot,
+            )
+        end
+
+        scatter!(
+            p,
+            xValues,
+            yValues,
+            zValues,
+            label = method,
+            marker = marker,
+            color = color,
+            markersize = 7,
+        )
+
+        offsetX, offsetY, offsetZ = labelOffsets[method]
+        annotate!(
+            p,
+            [
+                begin
+                    pointOffsetX = methodRows[i].instance == "gen_8x5_reg8_1" && method == "CPLEX" ? -2.25 : offsetX
+                    pointOffsetY = methodRows[i].instance == "gen_8x5_reg8_1" && method == "CPLEX" ? 0.15 : offsetY + 0.25 * (i - 1)
+                    (
+                        xValues[i] + pointOffsetX,
+                        yValues[i] + pointOffsetY,
+                        min(zValues[i] + offsetZ, TIMEOUT_SEC),
+                        text(labels[i], 8, color),
+                    )
+                end
+                for i in eachindex(methodRows)
+            ],
+        )
+    end
+
+    savefig(p, outputPath)
+end
+
+function build_contrast_figures(rows)
+    build_contrast_3d_figure(
+        rows,
+        ["gen_8x5_reg8_1", "gen_8x5_reg8_2"],
+        joinpath(IMAGE_DIR, "palisade_contrast_indices_8x5_3d.pdf"),
+        methods = ["CPLEX"],
+    )
+    build_contrast_3d_figure(
+        rows,
+        ["gen_10x5_reg10_1", "gen_10x5_reg10_2"],
+        joinpath(IMAGE_DIR, "palisade_contrast_indices_10x5_3d.pdf"),
+    )
 end
 
 function build_region_figure(rows, outputPath::String)
@@ -338,6 +467,7 @@ function generate_report_artifacts()
         joinpath(IMAGE_DIR, "palisade_resolution_rate.pdf"),
         joinpath(IMAGE_DIR, "palisade_size_scatter.pdf"),
         joinpath(IMAGE_DIR, "palisade_indices_effect.pdf"),
+        joinpath(IMAGE_DIR, "palisade_contrast_indices_3d.pdf"),
     ]
 
     for path in obsoleteFiles
@@ -354,6 +484,7 @@ function generate_report_artifacts()
     performanceDiagram(joinpath(IMAGE_DIR, "palisade_performance_diagram.pdf"); generatedOnly=true)
     resultsArray(joinpath(GENERATED_DIR, "palisade_results_array.tex"); generatedOnly=true)
     build_region_figure(rows, joinpath(IMAGE_DIR, "palisade_regions_6x6.pdf"))
+    build_contrast_figures(rows)
 
     println("Palisade report artifacts written to ", GENERATED_DIR, " and ", IMAGE_DIR)
 end
