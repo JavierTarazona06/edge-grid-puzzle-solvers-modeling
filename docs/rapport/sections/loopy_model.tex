@@ -1,4 +1,4 @@
-\section{jeu Loopy}
+\section{Jeu Loopy}
 
 Le jeu \textit{Loopy} se joue sur une grille composée de cases et d'arêtes. Le but est de sélectionner certaines arêtes de la grille afin de former une unique boucle fermée.
 
@@ -13,9 +13,9 @@ Une solution valide doit donc vérifier trois conditions principales :
 
 Les deux premières conditions sont locales et peuvent être modélisées directement par des contraintes linéaires. En revanche, la dernière condition est globale : elle impose l'unicité de la boucle. C'est cette règle qui rend le problème plus difficile à modéliser directement.
 
-\section{Modélisation PLNE}
+\subsection{Modélisation PLNE}
 
-\subsection{Ensembles et paramètres}
+\subsubsection{Ensembles et paramètres}
 
 On considère une grille rectangulaire composée de cases carrées. On introduit les ensembles et paramètres suivants :
 \begin{itemize}
@@ -24,10 +24,10 @@ On considère une grille rectangulaire composée de cases carrées. On introduit
     \item \(\mathcal{S}\) : ensemble des cases portant un indice ;
     \item pour toute case \(p \in \mathcal{S}\), \(E(p) \subseteq \mathcal{E}\) désigne l'ensemble des quatre arêtes bordant la case \(p\) ;
     \item pour tout sommet \(v \in \mathcal{V}\), \(\delta(v) \subseteq \mathcal{E}\) désigne l'ensemble des arêtes incidentes au sommet \(v\) ;
-    \item pour toute case \(p \in \mathcal{S}\), \(a_p \in \{0,1,2,3,4\}\) représente l'indice inscrit dans la case.
+    \item pour toute case \(p \in \mathcal{S}\), \(a_p \in \{0,1,2,3\}\) représente l'indice inscrit dans la case.
 \end{itemize}
 
-\subsection{Variables}
+\subsubsection{Variables}
 
 Pour chaque arête \(e \in \mathcal{E}\), on introduit une variable binaire :
 \[
@@ -47,7 +47,7 @@ y_v =
 \end{cases}
 \]
 
-\subsection{Contraintes des cases}
+\subsubsection{Contraintes des cases}
 
 Chaque case numérotée doit être bordée par exactement le nombre d'arêtes indiqué par son indice. On impose donc :
 \[
@@ -57,7 +57,7 @@ Chaque case numérotée doit être bordée par exactement le nombre d'arêtes in
 
 Cette contrainte garantit le respect des indices donnés dans la grille.
 
-\subsection{Contraintes des sommets}
+\subsubsection{Contraintes des sommets}
 
 Dans une boucle, un sommet ne peut pas être une extrémité libre ni un point de branchement. Il doit donc être incident à exactement deux arêtes sélectionnées s'il appartient à la boucle, et à aucune arête sinon. On impose :
 \[
@@ -77,7 +77,7 @@ y_v \in \{0,1\}
 
 Ces contraintes garantissent que les arêtes sélectionnées forment un ensemble de cycles disjoints, sans branchement et sans extrémité libre.
 
-\subsection{Fonction objectif}
+\subsubsection{Fonction objectif}
 
 Le jeu \textit{Loopy} est formulé comme un problème de faisabilité. L'objectif n'est donc pas de minimiser ou maximiser une quantité particulière, mais simplement de trouver une solution réalisable. On choisit alors une fonction objectif constante :
 \[
@@ -106,7 +106,7 @@ y_v \in \{0,1\}
 \qquad \forall v \in \mathcal{V}.
 \]
 
-\subsection{Limite du modèle}
+\subsubsection{Limite du modèle}
 
 Le modèle précédent impose correctement les contraintes locales du jeu : les indices des cases sont respectés et les sommets sélectionnés sont de degré deux. Cependant, il ne garantit pas que toutes les arêtes sélectionnées appartiennent à une unique boucle.
 
@@ -122,15 +122,15 @@ où \(E(W)\) désigne l'ensemble des arêtes dont les deux extrémités appartie
 
 Cependant, le nombre de ces contraintes est exponentiel par rapport au nombre de sommets. Il n'est donc pas raisonnable de les ajouter toutes dès le début de la résolution. Pour cette raison, la contrainte d'unicité de la boucle est traitée dynamiquement à l'aide d'un callback.
 
-\section{Callback}
+\subsection{Callback}
 
-\subsection{Problème des sous-cycles}
+\subsubsection{Problème des sous-cycles}
 
 La principale difficulté du jeu \textit{Loopy} est d'imposer que la solution contienne une seule boucle. Les contraintes locales du modèle PLNE empêchent les extrémités libres et les branchements, mais elles n'empêchent pas l'apparition de plusieurs cycles séparés.
 
 Ainsi, une solution entière trouvée par CPLEX peut être localement correcte, tout en étant globalement invalide. Le rôle du callback est donc de tester chaque solution entière candidate et d'ajouter une contrainte supplémentaire lorsqu'une sous-boucle est détectée.
 
-\subsection{Détection des composantes connexes}
+\subsubsection{Détection des composantes connexes}
 
 Lorsqu'une solution entière est trouvée par CPLEX, on récupère l'ensemble des arêtes sélectionnées :
 \[
@@ -141,7 +141,7 @@ Lorsqu'une solution entière est trouvée par CPLEX, on récupère l'ensemble de
 
 Si toutes les arêtes sélectionnées appartiennent à une seule composante connexe, alors la solution contient une unique boucle et elle est acceptée. En revanche, si plusieurs composantes connexes sont détectées, cela signifie que la solution contient plusieurs boucles disjointes. Dans ce cas, la solution doit être rejetée.
 
-\subsection{Contrainte ajoutée}
+\subsubsection{Contrainte ajoutée}
 
 Lorsqu'une sous-boucle est détectée, on note \(C\) l'ensemble des arêtes de cette boucle. Pour interdire à CPLEX de retrouver exactement cette même sous-boucle, on ajoute dynamiquement la contrainte suivante :
 \[
@@ -162,7 +162,7 @@ Le callback suit alors le principe suivant :
 
 Cette approche permet de ne pas ajouter toutes les contraintes d'unicité dès le début. Les contraintes sont ajoutées uniquement lorsqu'elles sont nécessaires, ce qui rend la résolution plus efficace pour les instances de taille raisonnable.
 
-\subsection{Définition manuelle d’une instance}
+\subsubsection{Définition manuelle d’une instance}
 
 On crée dans le répertoire \texttt{data} un fichier \texttt{instanceTest.txt} représentant une instance simple du jeu \textit{Loopy}. 
 
@@ -205,11 +205,11 @@ Considérons une grille \(4 \times 4\) :
 
 Cette instance sera utilisée pour tester la lecture des données et la résolution du modèle.
 
-\section{Implémentation}
+\subsection{Implémentation}
 
 Cette section présente les principales fonctions développées pour manipuler les instances du jeu \textit{Loopy}. L'implémentation est organisée autour de trois aspects : la lecture des instances, l'affichage des grilles et la génération automatique d'instances de test.
 
-\subsection{Lecture des instances}
+\subsubsection{Lecture des instances}
 
 Les instances du jeu \textit{Loopy} sont représentées par une matrice d'entiers. Chaque case de la grille correspond à une valeur :
 \begin{itemize}
@@ -234,7 +234,7 @@ end
 
 Ainsi, une instance textuelle peut être directement convertie en une structure exploitable par le modèle de résolution.
 
-\subsection{Affichage}
+\subsubsection{Affichage}
 
 Deux fonctions d'affichage ont été ajoutées dans le fichier \texttt{io.jl}. La première, \texttt{displayGrid}, affiche une instance non résolue dans la console. Les cases vides sont représentées par un point, tandis que les cases numérotées affichent leur indice.
 
@@ -462,11 +462,11 @@ end
 
 Cette organisation permet ensuite d'exploiter automatiquement les fichiers de résultats pour construire des tableaux comparatifs et analyser les performances des méthodes selon la taille et la densité des instances.
 
-\section{Méthode heuristique}
+\subsection{Méthode heuristique}
 
 En plus de la résolution exacte par CPLEX, nous avons implémenté une méthode heuristique pour tenter de trouver rapidement une solution réalisable. Contrairement à la méthode exacte, cette approche ne garantit pas toujours de trouver une solution, même si une solution existe. Elle permet cependant d'obtenir rapidement une configuration satisfaisante sur certaines instances.
 
-\subsection{Principe général}
+\subsubsection{Principe général}
 
 L'heuristique repose sur une recherche locale. On représente une solution candidate à l'aide de deux matrices binaires :
 \begin{itemize}
@@ -478,7 +478,7 @@ Une valeur égale à \(1\) signifie que l'arête est sélectionnée, tandis qu'u
 
 L'algorithme commence par générer aléatoirement une configuration initiale des arêtes. Ensuite, il modifie progressivement cette configuration en inversant l'état d'une arête choisie au hasard. À chaque modification, une fonction de score permet d'évaluer la qualité de la solution obtenue.
 
-\subsection{Fonction de score}
+\subsubsection{Fonction de score}
 
 La fonction de score mesure le nombre de violations des contraintes locales du jeu. Elle prend en compte deux types de pénalités.
 
@@ -501,7 +501,7 @@ end
 
 Cette partie du code calcule, pour chaque case numérotée, le nombre d'arêtes sélectionnées autour de la case et le compare avec l'indice imposé.
 
-\subsection{Recherche locale}
+\subsubsection{Recherche locale}
 
 À chaque itération, l'heuristique crée une nouvelle solution candidate à partir de la meilleure solution courante. Pour cela, elle choisit aléatoirement une arête horizontale ou verticale, puis inverse son état.
 
@@ -517,7 +517,7 @@ end
 
 Cette stratégie permet d'explorer plusieurs configurations possibles au lieu de suivre uniquement les améliorations immédiates.
 
-\subsection{Critère d'arrêt}
+\subsubsection{Critère d'arrêt}
 
 L'algorithme s'arrête lorsque l'une des deux conditions suivantes est vérifiée :
 \begin{itemize}
@@ -532,7 +532,7 @@ Dans notre implémentation, la limite de temps par défaut est fixée à \(20\) 
     \item les matrices \(h\) et \(v\) correspondant à la meilleure solution trouvée.
 \end{itemize}
 
-\subsection{Limites de l'heuristique}
+\subsubsection{Limites de l'heuristique}
 
 Cette heuristique est simple et rapide, mais elle présente certaines limites. Elle se base principalement sur les contraintes locales : les indices des cases et les degrés des sommets. Elle permet donc de réduire progressivement les violations locales, mais elle ne garantit pas toujours l'obtention d'une unique boucle globale.
 
@@ -540,9 +540,9 @@ En particulier, une configuration peut avoir un score nul pour les contraintes l
 
 Ainsi, l'heuristique constitue surtout une méthode approchée permettant de trouver rapidement de bonnes configurations, tandis que la résolution exacte avec callback reste nécessaire pour garantir rigoureusement la validité complète d'une solution du jeu \textit{Loopy}.
 
-\section{Résultats expérimentaux}
+\subsection{Résultats expérimentaux}
 
-\subsection{Protocole}
+\subsubsection{Protocole}
 
 Les expériences ont été réalisées sur des instances générées automatiquement. Les tailles de grilles testées sont :
 \[
@@ -570,7 +570,7 @@ Deux méthodes de résolution ont été comparées :
 
 Pour chaque instance et chaque méthode, nous avons enregistré le temps de calcul \texttt{solveTime} ainsi que la variable \texttt{isOptimal}, qui indique si une solution a été trouvée. Pour l'heuristique, la limite de temps est fixée à \(20\) secondes par instance.
 
-\subsection{Temps de calcul}
+\subsubsection{Temps de calcul}
 
 Le tableau suivant présente les temps moyens de calcul par taille de grille. Les moyennes sont calculées sur les \(15\) instances générées pour chaque taille, toutes densités confondues.
 
@@ -618,7 +618,7 @@ Pour l'heuristique, les temps moyens sont plus élevés. Cela vient du fait que 
 \caption{Temps moyen de résolution selon la taille de la grille.}
 \end{figure}
 
-\subsection{Taux de résolution}
+\subsubsection{Taux de résolution}
 
 Le tableau suivant présente le nombre d'instances résolues par chaque méthode, regroupé par taille de grille.
 
@@ -679,7 +679,7 @@ On observe que le nombre d'instances résolues diminue lorsque la taille de la g
 
 Il faut aussi noter que les instances générées aléatoirement ne sont pas nécessairement réalisables. Ainsi, lorsqu'aucune solution n'est trouvée, cela ne signifie pas forcément que la méthode échoue : l'instance peut aussi être infaisable.
 
-\subsection{Taille maximale résolue}
+\subsubsection{Taille maximale résolue}
 
 D'après les résultats obtenus, la méthode exacte par CPLEX avec callback trouve des solutions jusqu'à la taille \(7 \times 7\). Aucune instance générée de taille \(8 \times 8\) n'a été résolue par CPLEX dans notre série de tests.
 
@@ -687,7 +687,7 @@ L'heuristique trouve au moins une solution jusqu'à la taille \(8 \times 8\). Ce
 
 Ainsi, pour obtenir une solution rigoureusement valide du jeu \textit{Loopy}, la méthode exacte avec callback reste la méthode la plus fiable. L'heuristique est plutôt utilisée comme une méthode rapide permettant de trouver de bonnes configurations candidates.
 
-\subsection{Gap éventuel}
+\subsubsection{Gap éventuel}
 
 Dans notre modélisation, le jeu \textit{Loopy} est formulé comme un problème de faisabilité. La fonction objectif choisie est constante :
 \[
@@ -704,7 +704,7 @@ L'évaluation expérimentale repose donc principalement sur :
     \item la capacité de la méthode à garantir l'unicité de la boucle.
 \end{itemize}
 
-\subsection{Bilan}
+\subsubsection{Bilan}
 
 Les résultats montrent que la résolution exacte avec callback est très rapide sur les instances où elle trouve une solution. Elle a l'avantage de garantir la validité complète de la solution, notamment l'unicité de la boucle.
 
@@ -713,7 +713,7 @@ L'heuristique trouve davantage de solutions candidates dans nos tests, mais elle
 Enfin, la difficulté augmente avec la taille des grilles et avec la structure des indices. Les instances générées aléatoirement peuvent également être infaisables, ce qui explique en partie les faibles taux de résolution observés.
 
 
-\section{Discussion}
+\subsection{Discussion}
 
 Les résultats obtenus montrent que la résolution du jeu \textit{Loopy} dépend fortement de la structure des instances. Même pour des grilles de taille modérée, certaines instances deviennent difficiles à résoudre, notamment lorsque les indices imposent des contraintes fortes ou contradictoires.
 
@@ -729,7 +729,7 @@ Il faut également souligner que les instances générées aléatoirement ne son
 
 Enfin, les résultats montrent que les deux approches sont complémentaires. La résolution exacte est plus fiable pour certifier une solution valide, tandis que l'heuristique peut servir à explorer rapidement l'espace des configurations et à obtenir des solutions candidates.
 
-\section{Conclusion}
+\subsection{Conclusion}
 
 Dans ce projet, nous avons étudié la résolution automatique du jeu \textit{Loopy}. Nous avons d'abord proposé une modélisation du problème sous la forme d'un programme linéaire en nombres entiers. Cette modélisation repose sur des variables binaires associées aux arêtes de la grille, ainsi que sur des contraintes locales permettant de respecter les indices des cases et les degrés des sommets.
 
@@ -743,9 +743,9 @@ Comme amélioration possible, on pourrait développer un générateur d'instance
 
 
 
-\section{Annexes}
+\subsection{Annexes}
 
-\subsection{Exemple d'instance}
+\subsubsection{Exemple d'instance}
 
 Voici un exemple de fichier texte représentant une instance du jeu \textit{Loopy}. Les cases vides sont représentées par des espaces, tandis que les cases contraintes contiennent un entier entre \(0\) et \(4\).
 
@@ -758,7 +758,7 @@ Voici un exemple de fichier texte représentant une instance du jeu \textit{Loop
 
 Après lecture par la fonction \texttt{readInputFile}, cette instance est transformée en matrice d'entiers. Les cases vides sont représentées par la valeur \(-1\).
 
-\subsection{Exemple de solution sauvegardée}
+\subsubsection{Exemple de solution sauvegardée}
 
 Lorsqu'une solution est trouvée, les matrices des arêtes horizontales et verticales sont sauvegardées. La matrice \(h\) représente les arêtes horizontales et la matrice \(v\) représente les arêtes verticales.
 
@@ -781,10 +781,7 @@ v = [
 
 Une valeur \(1\) signifie que l'arête est sélectionnée, tandis qu'une valeur \(0\) signifie qu'elle ne l'est pas.
 
-\subsection{Tableau détaillé des résultats}
-
-Le tableau détaillé des résultats expérimentaux peut être placé ici. Il contient, pour chaque instance, le temps de résolution et le statut obtenu avec chaque méthode.
-
+\subsubsection{Tableau détaillé des résultats}
 \begin{center}
 \scriptsize
 \renewcommand{\arraystretch}{1.05}
@@ -792,12 +789,281 @@ Le tableau détaillé des résultats expérimentaux peut être placé ici. Il co
 \hline
 \textbf{Instance} & \textbf{CPLEX t. (s)} & \textbf{CPLEX ok} & \textbf{Heur. t. (s)} & \textbf{Heur. ok} \\
 \hline
-% Coller ici le tableau détaillé généré par resultsArray.
+
+generated\_4x4\_d0.2\_1.txt & 2.23 & 
+$\times$
+ & 0.0 & 
+$\times$
+\\
+generated\_4x4\_d0.2\_2.txt & 0.01 & 
+$\times$
+ & 0.01 & 
+$\times$
+\\
+generated\_4x4\_d0.2\_3.txt & 0.0 & 
+$\times$
+ & 0.0 & 
+$\times$
+\\
+generated\_4x4\_d0.2\_4.txt & 0.0 & 
+ & 0.0 & 
+$\times$
+\\
+generated\_4x4\_d0.2\_5.txt & 0.0 & 
+$\times$
+ & 0.0 & 
+$\times$
+\\
+generated\_4x4\_d0.3\_1.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_4x4\_d0.3\_2.txt & 0.02 & 
+$\times$
+ & 0.0 & 
+$\times$
+\\
+generated\_4x4\_d0.3\_3.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_4x4\_d0.3\_4.txt & 0.01 & 
+ & 20.01 & 
+\\
+generated\_4x4\_d0.3\_5.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_4x4\_d0.4\_1.txt & 0.01 & 
+$\times$
+ & 0.0 & 
+$\times$
+\\
+generated\_4x4\_d0.4\_2.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_4x4\_d0.4\_3.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_4x4\_d0.4\_4.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_4x4\_d0.4\_5.txt & 0.01 & 
+ & 20.0 & 
+\\
+generated\_5x5\_d0.2\_1.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_5x5\_d0.2\_2.txt & 0.01 & 
+$\times$
+ & 0.02 & 
+$\times$
+\\
+generated\_5x5\_d0.2\_3.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_5x5\_d0.2\_4.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_5x5\_d0.2\_5.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_5x5\_d0.3\_1.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_5x5\_d0.3\_2.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_5x5\_d0.3\_3.txt & 0.02 & 
+ & 0.08 & 
+$\times$
+\\
+generated\_5x5\_d0.3\_4.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_5x5\_d0.3\_5.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_5x5\_d0.4\_1.txt & 0.01 & 
+ & 20.0 & 
+\\
+generated\_5x5\_d0.4\_2.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_5x5\_d0.4\_3.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_5x5\_d0.4\_4.txt & 0.01 & 
+ & 20.0 & 
+\\
+generated\_5x5\_d0.4\_5.txt & 0.01 & 
+ & 20.01 & 
+\\
+generated\_6x6\_d0.2\_1.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_6x6\_d0.2\_2.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_6x6\_d0.2\_3.txt & 0.01 & 
+$\times$
+ & 0.05 & 
+$\times$
+\\
+generated\_6x6\_d0.2\_4.txt & 0.01 & 
+ & 0.55 & 
+$\times$
+\\
+generated\_6x6\_d0.2\_5.txt & 0.02 & 
+ & 0.19 & 
+$\times$
+\\
+generated\_6x6\_d0.3\_1.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_6x6\_d0.3\_2.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_6x6\_d0.3\_3.txt & 0.01 & 
+ & 0.05 & 
+$\times$
+\\
+generated\_6x6\_d0.3\_4.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_6x6\_d0.3\_5.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_6x6\_d0.4\_1.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_6x6\_d0.4\_2.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_6x6\_d0.4\_3.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_6x6\_d0.4\_4.txt & 0.01 & 
+ & 20.01 & 
+\\
+generated\_6x6\_d0.4\_5.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_7x7\_d0.2\_1.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_7x7\_d0.2\_2.txt & 0.01 & 
+$\times$
+ & 0.02 & 
+$\times$
+\\
+generated\_7x7\_d0.2\_3.txt & 0.0 & 
+$\times$
+ & 0.0 & 
+$\times$
+\\
+generated\_7x7\_d0.2\_4.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_7x7\_d0.2\_5.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_7x7\_d0.3\_1.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_7x7\_d0.3\_2.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_7x7\_d0.3\_3.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_7x7\_d0.3\_4.txt & 0.01 & 
+ & 20.01 & 
+\\
+generated\_7x7\_d0.3\_5.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_7x7\_d0.4\_1.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_7x7\_d0.4\_2.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_7x7\_d0.4\_3.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_7x7\_d0.4\_4.txt & 0.0 & 
+ & 20.01 & 
+\\
+
+generated\_7x7\_d0.4\_5.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_8x8\_d0.2\_1.txt & 0.02 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.2\_2.txt & 0.01 & 
+ & 20.01 & 
+\\
+generated\_8x8\_d0.2\_3.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.2\_4.txt & 0.01 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.2\_5.txt & 0.02 & 
+ & 6.19 & 
+$\times$
+\\
+generated\_8x8\_d0.3\_1.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_8x8\_d0.3\_2.txt & 0.0 & 
+ & 20.0 & 
+\\
+\hline\end{tabular}
+\end{center}
+
+\newpage
+\begin{center}
+\scriptsize
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{lrrrr}
+\hline
+\textbf{Instance} & \textbf{CPLEX t. (s)} & \textbf{CPLEX ok} & \textbf{Heur. t. (s)} & \textbf{Heur. ok} \\
+\hline
+
+generated\_8x8\_d0.3\_3.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.3\_4.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.3\_5.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_8x8\_d0.4\_1.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.4\_2.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.4\_3.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.4\_4.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_8x8\_d0.4\_5.txt & 0.0 & 
+ & 20.01 & 
+\\
+instanceTest.txt & 0.0 & 
+$\times$
+ & 0.08 & 
+$\times$
+\\
 \hline
 \end{tabular}
 \end{center}
 
-\subsection{Code source}
+\subsubsection{Code source}
 
 Le code source complet du projet est fourni avec le rapport. Il contient notamment :
 \begin{itemize}

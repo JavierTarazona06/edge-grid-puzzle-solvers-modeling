@@ -134,7 +134,7 @@ end
 Create a PDF performance diagram from the result files in the res subfolders.
 Each subfolder produces one curve.
 """
-function performanceDiagram(outputFile::String)
+function performanceDiagram(outputFile::String; generatedOnly::Bool=false)
 
     resultFolder = joinpath(@__DIR__, "..", "res")
     mkpath(dirname(outputFile))
@@ -148,10 +148,10 @@ function performanceDiagram(outputFile::String)
 
         solveTimes = Float64[]
 
-        for resultFile in sort(filter(x -> endswith(x, ".txt"), readdir(path)))
+        for resultFile in sort(filter(x -> endswith(x, ".txt") && (!generatedOnly || startswith(x, "gen_")), readdir(path)))
             solveTime, isOptimal = readResultFile(joinpath(path, resultFile))
 
-            if isOptimal
+            if isOptimal === true
                 push!(solveTimes, solveTime)
                 maxSolveTime = max(maxSolveTime, solveTime)
             end
@@ -214,9 +214,11 @@ function readResultFile(resultFile::String)
         strippedLine = strip(line)
 
         if startswith(strippedLine, "solveTime")
-            solveTime = parse(Float64, strip(split(strippedLine, "=", limit=2)[2]))
+            value = strip(split(strippedLine, "=", limit=2)[2])
+            solveTime = value in ("timeout", "\"timeout\"") ? "timeout" : parse(Float64, value)
         elseif startswith(strippedLine, "isOptimal")
-            isOptimal = parse(Bool, strip(split(strippedLine, "=", limit=2)[2]))
+            value = strip(split(strippedLine, "=", limit=2)[2])
+            isOptimal = value in ("timeout", "\"timeout\"") ? "timeout" : parse(Bool, value)
         end
     end
 
@@ -227,7 +229,7 @@ function readResultFile(resultFile::String)
     return solveTime, isOptimal
 end
 
-function resultsArray(outputFile::String)
+function resultsArray(outputFile::String; generatedOnly::Bool=false)
 
     resultFolder = joinpath(@__DIR__, "..", "res")
     mkpath(dirname(outputFile))
@@ -270,7 +272,7 @@ function resultsArray(outputFile::String)
 
     for folder in folderNames
         path = joinpath(resultFolder, folder)
-        append!(solvedInstances, filter(x -> endswith(x, ".txt"), readdir(path)))
+        append!(solvedInstances, filter(x -> endswith(x, ".txt") && (!generatedOnly || startswith(x, "gen_")), readdir(path)))
     end
 
     # Only keep one string for each instance solved
@@ -329,8 +331,12 @@ function resultsArray(outputFile::String)
 
                 solveTime, isOptimal = readResultFile(path)
 
-                optimalText = isOptimal ? "\$\\times\$" : "-"
-                print(fout, " & ", @sprintf("%.6f", solveTime), " & ", optimalText)
+                if solveTime == "timeout" || isOptimal == "timeout"
+                    print(fout, " & timeout & timeout")
+                else
+                    optimalText = isOptimal ? "\$\\times\$" : "-"
+                    print(fout, " & ", @sprintf("%.6f", solveTime), " & ", optimalText)
+                end
 
             # If the instance has not been solved by this method
             else

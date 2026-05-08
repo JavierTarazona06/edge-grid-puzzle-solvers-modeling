@@ -8,28 +8,85 @@ include("generation.jl")
 TOL = 0.00001                               # Tolerance for numerical issues in the callback
 
 """
-Solve an instance with CPLEX
+Resolve the common region size from either the size of each region or the
+number of regions.
 """
-function cplexSolve(t::Matrix{Int64}; regionSize::Int64=5, printValues::Bool=false)
-    """
-    Solve an instance with CPLEX
+function resolveRegionSize(t::AbstractMatrix{<:Integer};
+                           regionSize::Union{Nothing,Int}=nothing,
+                           nbRegions::Union{Nothing,Int}=nothing,
+                           defaultRegionSize::Union{Nothing,Int}=5)
+    nbRows, nbCols = size(t)
+    area = nbRows * nbCols
 
+    if regionSize === nothing && nbRegions === nothing
+        if defaultRegionSize === nothing
+            error("Missing region information. Pass either regionSize or nbRegions.")
+        end
+        regionSize = defaultRegionSize
+    end
+
+    if regionSize !== nothing
+        if regionSize <= 0
+            error("regionSize must be positive.")
+        end
+        if area % regionSize != 0
+            error("regionSize must divide the board area.")
+        end
+    end
+
+    if nbRegions !== nothing
+        if nbRegions <= 0
+            error("nbRegions must be positive.")
+        end
+        if area % nbRegions != 0
+            error("nbRegions must divide the board area.")
+        end
+
+        inferredRegionSize = div(area, nbRegions)
+        if regionSize !== nothing && regionSize != inferredRegionSize
+            error("regionSize and nbRegions are inconsistent with the board area.")
+        end
+        regionSize = inferredRegionSize
+    end
+
+    return regionSize
+end
+
+function resultRegionSize(resultFile::String)
+    if !isfile(resultFile)
+        return nothing
+    end
+
+    for line in eachline(resultFile)
+        strippedLine = strip(line)
+        if startswith(strippedLine, "regionSize")
+            return parse(Int, strip(split(strippedLine, "=", limit=2)[2]))
+        end
+    end
+
+    return nothing
+end
+
+"""
+Solve an instance with CPLEX.
+"""
+function cplexSolve(t::Matrix{Int64};
+                    regionSize::Union{Nothing,Int}=nothing,
+                    nbRegions::Union{Nothing,Int}=nothing,
+                    timeLimit=100.0,
+                    printValues::Bool=false)
+    """
         t : Game cells
-        regionSize : Number of cells in each region
-        printValues : If true, the returned values are printed
+        regionSize : Number of cells in each region.
+        nbRegions : Number of regions. If provided, regionSize is inferred.
+        timeLimit : CPLEX time limit in seconds.
+        printValues : If true, the returned values are printed.
     """
 
     nbRows = size(t, 1)                                      # Get number of rows. Indexed with 1
     nbCols = size(t, 2)                                      # Get number of columns. Indexed with 2
 
-    # Check region size is positive and divides the area of the grid
-    if regionSize <= 0
-        error("regionSize must be strictly positive.")
-    end
-    if (nbRows * nbCols) % regionSize != 0
-        error("regionSize must divide area nbRows * nbCols.")
-    end
-
+    regionSize = resolveRegionSize(t; regionSize=regionSize, nbRegions=nbRegions)
     nbRegions = div(nbRows * nbCols, regionSize)              # Get number of regions
 
     # Create the model
@@ -187,51 +244,49 @@ function cplexSolve(t::Matrix{Int64}; regionSize::Int64=5, printValues::Bool=fal
 
                 if length(components) > 1
                     # The region is not well formed
+                    for W in components
+                        Wset = Set(W)
+                        
+                        # List to store zh and zv variables to check connectivity
+                        borderTerms = Any[]
 
-                    # Get the first component as a set
-                    W = components[1]
-                    Wset = Set(W)
+                        for (i, j) in W
+                            # Only if neighbors are not in the Wset
+                            
+                            if i > 1 && !((i-1, j) in Wset)
+                                push!(borderTerms, zh[i-1, j, p])  # Get value if upper cell is also at region p
+                            end
 
-                    # List to store zh and zv variables to check connectivity
-                    borderTerms = Any[]
+                            if i < nbRows && !((i+1, j) in Wset)
+                                push!(borderTerms, zh[i, j, p])  # Get value if cell beneath is also at region p
+                            end
 
-                    for (i, j) in W
-                        # Only if neighbors are not in the Wset
+                            if j > 1 && !((i, j-1) in Wset)
+                                push!(borderTerms, zv[i, j-1, p])  # Get value if left cell is also at region p
+                            end
 
-                        if i > 1 && !((i-1, j) in Wset)
-                            push!(borderTerms, zh[i-1, j, p]) # Get value if upper cell is also at region p
+                            if j < nbCols && !((i, j+1) in Wset)
+                                push!(borderTerms, zv[i, j, p])  # Get value if right cell is also at region p
+                            end
                         end
 
-                        if i < nbRows && !((i+1, j) in Wset)
-                            push!(borderTerms, zh[i, j, p]) # Get value if cell beneath is also at region p
+                        # Sum of cell of W that belong to the region p
+                        leftSide = sum(x[i, j, p] for (i, j) in W)
+                        # Number of cells in W - 1, to block that component and make model to look for another solution
+                        rightSide = length(W) - 1
+
+                        # In the component there is a cell that can connects to cell not in the 
+                            # current component, but at the same region. So that makes possible to re-use that 
+                            # component as it is valid
+                        if length(borderTerms) > 0
+                            rightSide += sum(borderTerms)
                         end
 
-                        if j > 1 && !((i, j-1) in Wset)
-                            push!(borderTerms, zv[i, j-1, p]) # Get value if left cell is also at region p
-                        end
-
-                        if j < nbCols && !((i, j+1) in Wset)
-                            push!(borderTerms, zv[i, j, p]) # Get value if right cell is also at region p
-                        end
+                        # Constrain addition to the model
+                        cstr = @build_constraint(leftSide <= rightSide)
+                        # Adding lazy constraint to the call back
+                        MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
                     end
-
-                    # Sum of cell of W that belong to the region p
-                    leftSide = sum(x[i, j, p] for (i, j) in W)
-                    # Number of cells in W - 1, to block that component and make model to look for another solution
-                    rightSide = length(W) - 1
-
-                    # In the component there is a cell that can connects to cell not in the 
-                        # current component, but at the same region. So that makes possible to re-use that 
-                        # component as it is valid
-                    if length(borderTerms) > 0
-                        rightSide += sum(borderTerms)
-                    end
-
-                    # Constrain addition to the model
-                    cstr = @build_constraint(leftSide <= rightSide)
-                    # Adding lazy constraint to the call back
-                    MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
-                    return
                 end
             end
         end
@@ -239,6 +294,8 @@ function cplexSolve(t::Matrix{Int64}; regionSize::Int64=5, printValues::Bool=fal
 
     # CPLEX callbacks are used with one thread.
     MOI.set(m, MOI.NumberOfThreads(), 1)
+    # Data limit fixed
+    MOI.set(m, MOI.TimeLimitSec(), timeLimit)
     # Registers the funciton callback_connectivity as the CPLEX Callback
     MOI.set(m, CPLEX.CallbackFunction(), callback_connectivity)
 
@@ -392,7 +449,11 @@ end
 """
 Recursive engine that iterates through the board trying to fill it.
 """
-function backtrackSolve!(grid::Matrix{Int}, clues::Matrix{Int}, n::Int, m::Int, k::Int, regionSize::Int, row::Int, col::Int)
+function backtrackSolve!(grid::Matrix{Int}, clues::Matrix{Int}, n::Int, m::Int, k::Int, regionSize::Int, row::Int, col::Int, deadline=Inf)
+    if time() >= deadline
+        return nothing
+    end
+
     if col > m
         row += 1
         col = 1
@@ -403,7 +464,7 @@ function backtrackSolve!(grid::Matrix{Int}, clues::Matrix{Int}, n::Int, m::Int, 
     end
 
     if grid[row, col] != 0
-        return backtrackSolve!(grid, clues, n, m, k, regionSize, row, col + 1)
+        return backtrackSolve!(grid, clues, n, m, k, regionSize, row, col + 1, deadline)
     end
 
     for regionId in 1:k
@@ -411,7 +472,12 @@ function backtrackSolve!(grid::Matrix{Int}, clues::Matrix{Int}, n::Int, m::Int, 
 
             grid[row, col] = regionId
 
-            if backtrackSolve!(grid, clues, n, m, k, regionSize, row, col + 1)
+            result = backtrackSolve!(grid, clues, n, m, k, regionSize, row, col + 1, deadline)
+            if result === nothing
+                grid[row, col] = 0
+                return nothing
+            end
+            if result
                 return true
             end
 
@@ -425,40 +491,97 @@ end
 """
 Solve a Palisade puzzle with backtracking and pruning.
 """
-function heuristicSolve(clues::Matrix{Int})
+function heuristicSolve(clues::Matrix{Int};
+                        regionSize::Union{Nothing,Int}=nothing,
+                        nbRegions::Union{Nothing,Int}=nothing,
+                        timeLimit=100.0)
     startTime = time()
     n, m = size(clues)
-
-    regionSize = 5
-
-    if (n * m) % regionSize != 0
-        println("Error: Invalid board. $(n*m) cells cannot be divided into groups of $regionSize.")
-        return false, fill(0, n, m), time() - startTime
-    end
+    regionSize = resolveRegionSize(clues; regionSize=regionSize, nbRegions=nbRegions)
+    deadline = startTime + timeLimit
 
     k = div(n * m, regionSize)
     grid = zeros(Int, n, m)
 
-    isSolved = backtrackSolve!(grid, clues, n, m, k, regionSize, 1, 1)
+    result = backtrackSolve!(grid, clues, n, m, k, regionSize, 1, 1, deadline)
+    isSolved = result === true
 
     solveTime = time() - startTime
     return isSolved, grid, solveTime
 end
 
 """
-Solve all the instances contained in "../data" through CPLEX and heuristics
+Infer the region size from generated file names such as gen_8x6_reg8_1.txt.
+Fallback instances keep the Palisade default region size 5.
+"""
+function inferRegionSize(file::String, t::Matrix{Int64};
+                         regionSize::Union{Nothing,Int}=nothing,
+                         nbRegions::Union{Nothing,Int}=nothing,
+                         defaultRegionSize::Union{Nothing,Int}=5)
+    if regionSize !== nothing || nbRegions !== nothing
+        return resolveRegionSize(t; regionSize=regionSize, nbRegions=nbRegions)
+    end
+
+    patternMatch = match(r"^gen_(\d+)x(\d+)_reg(\d+)_\d+\.txt$", basename(file))
+
+    if patternMatch === nothing
+        return resolveRegionSize(t; defaultRegionSize=defaultRegionSize)
+    end
+
+    nbRows = parse(Int, patternMatch.captures[1])
+    nbCols = parse(Int, patternMatch.captures[2])
+    nbRegions = parse(Int, patternMatch.captures[3])
+
+    if size(t) != (nbRows, nbCols)
+        error("Instance filename dimensions do not match file contents: $file")
+    end
+    return resolveRegionSize(t; nbRegions=nbRegions, defaultRegionSize=defaultRegionSize)
+end
+
+function selectedResolutionMethods(methods)
+    availableMethods = Dict(
+        "cplex" => ("cplex", "cplex"),
+        "heuristic" => ("heuristic", "heuristic"),
+        "heuristique" => ("heuristic", "heuristic"),
+    )
+
+    methodNames = methods isa Union{AbstractString,Symbol} ? [methods] : collect(methods)
+    selectedMethods = Tuple{String,String}[]
+
+    for method in methodNames
+        methodKey = lowercase(String(method))
+        if !haskey(availableMethods, methodKey)
+            error("Unknown resolution method: $method. Use \"cplex\" or \"heuristic\".")
+        end
+
+        selectedMethod = availableMethods[methodKey]
+        if !(selectedMethod in selectedMethods)
+            push!(selectedMethods, selectedMethod)
+        end
+    end
+
+    return selectedMethods
+end
+
+"""
+Solve all the instances contained in "../data" with the selected methods.
 
 The results are written in "../res/cplex" and "../res/heuristic"
 
-Remark: If an instance has previously been solved (either by cplex or the heuristic) it will not be solved again
+Remark: If an instance has previously been solved with the same region size
+(either by cplex or the heuristic) it will not be solved again.
 """
-function solveDataSet()
+function solveDataSet(; methods=("cplex", "heuristic"),
+                        regionSize::Union{Nothing,Int}=nothing,
+                        nbRegions::Union{Nothing,Int}=nothing,
+                        defaultRegionSize::Union{Nothing,Int}=5,
+                        timeLimit=100.0)
 
     dataFolder = joinpath(@__DIR__, "..", "data")
     resFolder = joinpath(@__DIR__, "..", "res")
 
     # Each pair contains the output folder name and the method label to display.
-    resolutionMethods = [("cplex", "cplex"), ("heuristic", "heuristic")]
+    resolutionMethods = selectedResolutionMethods(methods)
 
     # Array which contains the result folder of each resolution method
     resolutionFolders = [joinpath(resFolder, methodFolder) for (methodFolder, _) in resolutionMethods]
@@ -483,6 +606,10 @@ function solveDataSet()
 
         println("-- Resolution of ", file)
         t = readInputFile(joinpath(dataFolder, file))
+        instanceRegionSize = inferRegionSize(file, t;
+                                             regionSize=regionSize,
+                                             nbRegions=nbRegions,
+                                             defaultRegionSize=defaultRegionSize)
 
         # For each resolution method
         for methodId in eachindex(resolutionMethods)
@@ -491,7 +618,7 @@ function solveDataSet()
             outputFile = joinpath(resolutionFolders[methodId], file)
 
             # If the instance has not already been solved by this method
-            if !isfile(outputFile)
+            if resultRegionSize(outputFile) != instanceRegionSize
 
                 fout = open(outputFile, "w")
 
@@ -502,26 +629,33 @@ function solveDataSet()
                 if methodFolder == "cplex"
 
                     # Solve it and get the results
-                    isOptimal, x, yh, yv, resolutionTime = cplexSolve(t)
+                    isOptimal, x, yh, yv, resolutionTime = cplexSolve(t; regionSize=instanceRegionSize, timeLimit=timeLimit)
 
 
                 # If the method is one of the heuristics
                 else
 
-                    isOptimal, solvedGrid, resolutionTime = heuristicSolve(t)
+                    isOptimal, solvedGrid, resolutionTime = heuristicSolve(t; regionSize=instanceRegionSize, timeLimit=timeLimit)
 
                 end
 
-                println(fout, "solveTime = ", resolutionTime)
-                println(fout, "isOptimal = ", isOptimal)
+                timedOut = !isOptimal && resolutionTime >= timeLimit
+
+                println(fout, "regionSize = ", instanceRegionSize)
+                println(fout, "solveTime = ", timedOut ? "timeout" : string(resolutionTime))
+                println(fout, "isOptimal = ", timedOut ? "timeout" : string(isOptimal))
                 close(fout)
             end
 
 
             # Display the results obtained with the method on the current instance
-            include(outputFile)
+            solveTime, isOptimal = readResultFile(outputFile)
             println(methodLabel, " optimal: ", isOptimal)
-            println(methodLabel, " time: " * string(round(solveTime, sigdigits=2)) * "s\n")
+            if solveTime == "timeout"
+                println(methodLabel, " time: timeout\n")
+            else
+                println(methodLabel, " time: " * string(round(solveTime, sigdigits=2)) * "s\n")
+            end
         end
     end
 end
