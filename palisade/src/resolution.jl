@@ -72,7 +72,8 @@ Solve an instance with CPLEX.
 """
 function cplexSolve(t::Matrix{Int64};
                     regionSize::Union{Nothing,Int}=nothing,
-                    nbRegions::Union{Nothing,Int}=nothing)
+                    nbRegions::Union{Nothing,Int}=nothing,
+                    timeLimit=100.0)
 
 
     nbRows = size(t, 1)
@@ -257,6 +258,7 @@ function cplexSolve(t::Matrix{Int64};
 
     # CPLEX callbacks are used with one thread.
     MOI.set(m, MOI.NumberOfThreads(), 1)
+    MOI.set(m, MOI.TimeLimitSec(), timeLimit)
     MOI.set(m, CPLEX.CallbackFunction(), callback_connectivity)
 
     # Start a chronometer
@@ -371,7 +373,11 @@ end
 """
 Recursive engine that iterates through the board trying to fill it.
 """
-function backtrackSolve!(grid::Matrix{Int}, clues::Matrix{Int}, n::Int, m::Int, k::Int, regionSize::Int, row::Int, col::Int)
+function backtrackSolve!(grid::Matrix{Int}, clues::Matrix{Int}, n::Int, m::Int, k::Int, regionSize::Int, row::Int, col::Int, deadline=Inf)
+    if time() >= deadline
+        return nothing
+    end
+
     if col > m
         row += 1
         col = 1
@@ -382,7 +388,7 @@ function backtrackSolve!(grid::Matrix{Int}, clues::Matrix{Int}, n::Int, m::Int, 
     end
 
     if grid[row, col] != 0
-        return backtrackSolve!(grid, clues, n, m, k, regionSize, row, col + 1)
+        return backtrackSolve!(grid, clues, n, m, k, regionSize, row, col + 1, deadline)
     end
 
     for regionId in 1:k
@@ -390,7 +396,12 @@ function backtrackSolve!(grid::Matrix{Int}, clues::Matrix{Int}, n::Int, m::Int, 
 
             grid[row, col] = regionId
 
-            if backtrackSolve!(grid, clues, n, m, k, regionSize, row, col + 1)
+            result = backtrackSolve!(grid, clues, n, m, k, regionSize, row, col + 1, deadline)
+            if result === nothing
+                grid[row, col] = 0
+                return nothing
+            end
+            if result
                 return true
             end
 
@@ -406,15 +417,18 @@ Solve a Palisade puzzle with backtracking and pruning.
 """
 function heuristicSolve(clues::Matrix{Int};
                         regionSize::Union{Nothing,Int}=nothing,
-                        nbRegions::Union{Nothing,Int}=nothing)
+                        nbRegions::Union{Nothing,Int}=nothing,
+                        timeLimit=100.0)
     startTime = time()
     n, m = size(clues)
     regionSize = resolveRegionSize(clues; regionSize=regionSize, nbRegions=nbRegions)
+    deadline = startTime + timeLimit
 
     k = div(n * m, regionSize)
     grid = zeros(Int, n, m)
 
-    isSolved = backtrackSolve!(grid, clues, n, m, k, regionSize, 1, 1)
+    result = backtrackSolve!(grid, clues, n, m, k, regionSize, 1, 1, deadline)
+    isSolved = result === true
 
     solveTime = time() - startTime
     return isSolved, grid, solveTime
@@ -484,7 +498,8 @@ Remark: If an instance has previously been solved with the same region size
 function solveDataSet(; methods=("cplex", "heuristic"),
                         regionSize::Union{Nothing,Int}=nothing,
                         nbRegions::Union{Nothing,Int}=nothing,
-                        defaultRegionSize::Union{Nothing,Int}=5)
+                        defaultRegionSize::Union{Nothing,Int}=5,
+                        timeLimit=100.0)
 
     dataFolder = joinpath(@__DIR__, "..", "data")
     resFolder = joinpath(@__DIR__, "..", "res")
@@ -538,27 +553,33 @@ function solveDataSet(; methods=("cplex", "heuristic"),
                 if methodFolder == "cplex"
 
                     # Solve it and get the results
-                    isOptimal, x, yh, yv, resolutionTime = cplexSolve(t; regionSize=instanceRegionSize)
+                    isOptimal, x, yh, yv, resolutionTime = cplexSolve(t; regionSize=instanceRegionSize, timeLimit=timeLimit)
 
 
                 # If the method is one of the heuristics
                 else
 
-                    isOptimal, solvedGrid, resolutionTime = heuristicSolve(t; regionSize=instanceRegionSize)
+                    isOptimal, solvedGrid, resolutionTime = heuristicSolve(t; regionSize=instanceRegionSize, timeLimit=timeLimit)
 
                 end
 
+                timedOut = !isOptimal && resolutionTime >= timeLimit
+
                 println(fout, "regionSize = ", instanceRegionSize)
-                println(fout, "solveTime = ", resolutionTime)
-                println(fout, "isOptimal = ", isOptimal)
+                println(fout, "solveTime = ", timedOut ? "timeout" : string(resolutionTime))
+                println(fout, "isOptimal = ", timedOut ? "timeout" : string(isOptimal))
                 close(fout)
             end
 
 
             # Display the results obtained with the method on the current instance
-            include(outputFile)
+            solveTime, isOptimal = readResultFile(outputFile)
             println(methodLabel, " optimal: ", isOptimal)
-            println(methodLabel, " time: " * string(round(solveTime, sigdigits=2)) * "s\n")
+            if solveTime == "timeout"
+                println(methodLabel, " time: timeout\n")
+            else
+                println(methodLabel, " time: " * string(round(solveTime, sigdigits=2)) * "s\n")
+            end
         end
     end
 end
