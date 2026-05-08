@@ -21,8 +21,8 @@ There you can find the report of the project.
 ## Repository layout
 
 - `sudoku1.0/`: most complete Julia implementation example in the repository. It includes dataset generation, CPLEX-based solving, heuristic solvers, a callback-based variant, and utilities to export result tables and plots.
-- `loopy/`: project scaffold for the Loopy puzzle family. The directory structure is in place, but several core methods still contain `TODO` markers.
-- `palisade/`: Julia implementation for the Palisade puzzle family, including input reading and a CPLEX model with a connectivity callback.
+- `loopy/`: project scaffold for the Loopy puzzle family.
+- `palisade/`: Julia implementation for the Palisade puzzle family
 - `docs/rapport/`: LaTeX sources for the written report compiled by GitHub Actions.
 - `.github/workflows/latex.yml`: CI workflow that builds the report PDF and publishes it to GitHub Pages on pushes to `main`.
 
