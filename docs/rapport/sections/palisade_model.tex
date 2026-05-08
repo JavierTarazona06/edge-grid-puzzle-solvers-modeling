@@ -422,14 +422,83 @@ En revanche, si au moins une paire du bord relie \(W\) à une autre case de la m
 La coupe autorise alors \(\sum_{c \in W} x_{c,p} = \card{W}\), car \(W\) n'est plus une composante isolée.
 
 
-Dans l'implémentation de ce projet, dès qu'une région déconnectée est détectée, le \textit{callback} ajoute une coupe pour la première composante stricte trouvée puis redonne la main à CPLEX. Si d'autres composantes interdites subsistent, elles seront coupées lors d'appels ultérieurs.
+Dans l'implémentation finale de ce projet, dès qu'une région déconnectée est détectée, le \textit{callback} ajoute une coupe pour chacune des composantes strictes trouvées dans cette région. Ainsi, une même solution candidate peut produire plusieurs coupes de connexité avant que CPLEX ne reprenne la recherche.
 
 Le \textit{callback} consiste donc à répéter les étapes suivantes :
 \begin{enumerate}
     \item résoudre le modèle de base ;
     \item détecter les régions déconnectées dans la solution entière candidate ;
-    \item ajouter une coupe de connexité pour une composante interdite détectée ;
+    \item ajouter une ou plusieurs coupes de connexité pour les composantes interdites détectées ;
     \item relancer la recherche jusqu'à obtenir une solution où toutes les régions sont connexes.
 \end{enumerate}
 
 Il ne s'agit pas d'une heuristique, car on n'accepte jamais une solution déconnectée : chaque solution candidate qui viole la connexité est coupée par une contrainte valide. Le callback reste donc une méthode exacte, mais les contraintes de connexité ne sont ajoutées que lorsqu'elles deviennent nécessaires, ce qui permet de garder un modèle initial plus compact.
+
+\subsection{Problèmes rencontrés}
+
+Un problème important est apparu lors des tests sur deux instances de mêmes
+dimensions, \texttt{gen\_10x5\_reg10\_1.txt} et
+\texttt{gen\_10x5\_reg10\_2.txt}. Les deux grilles possèdent \(10 \times 5\)
+cases et 10 régions de taille 5, mais les temps de résolution obtenus étaient
+très différents : environ \(1.63\) seconde pour la première instance contre
+environ \(687.28\) secondes pour la seconde.
+
+Cette différence ne vient donc pas seulement de la taille de la grille. Dans un
+modèle MIP, deux instances de même dimension peuvent produire des arbres de
+\textit{branch-and-bound} très différents. La structure des indices, la densité
+des cases numérotées et les symétries restantes influencent fortement le nombre
+de solutions candidates explorées par CPLEX.
+
+\subsubsection{Correction du callback de connexité}
+
+Dans notre cas, la difficulté venait surtout du \textit{callback} de connexité.
+La première version du code rejetait une seule composante déconnectée à chaque
+appel du \textit{callback}. Autrement dit, lorsqu'une solution candidate
+contenait plusieurs composantes déconnectées, CPLEX ne recevait qu'une seule
+coupe, puis reprenait la recherche. Les autres composantes incorrectes étaient
+donc coupées seulement lors d'appels ultérieurs. Pour une solution très
+déconnectée, cela pouvait provoquer de nombreux rappels successifs et ralentir
+fortement la résolution.
+
+Le changement réalisé dans \texttt{palisade/src/resolution.jl} est le suivant :
+
+\begin{verbatim}
+Avant :
+
+if length(components) > 1
+    W = components[1]
+    # construction de la coupe pour W
+    MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
+    return
+end
+
+Après :
+
+if length(components) > 1
+    for W in components
+        # construction de la coupe pour chaque W
+        MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
+    end
+end
+\end{verbatim}
+
+La correction consiste à parcourir toutes les composantes détectées avec
+l'instruction \texttt{for W in components}, puis à ajouter une coupe pour
+chaque composante \(W\). Il ne s'agit pas de rejeter
+plusieurs solutions candidates différentes en même temps, mais de rejeter
+plusieurs composantes incorrectes à l'intérieur d'une même solution candidate.
+Ainsi, CPLEX reçoit davantage d'information à chaque appel du
+\textit{callback}.
+
+Cette modification conserve l'exactitude de la méthode. Chaque coupe ajoutée
+reste une contrainte valide de connexité : elle interdit qu'une composante
+isolée reste affectée entièrement à la même région sans connexion avec le reste
+de cette région. En revanche, elle renforce beaucoup la séparation dynamique,
+car une seule solution candidate déconnectée permet maintenant d'ajouter
+plusieurs coupes utiles.
+
+Après cette correction, l'instance lente
+\texttt{gen\_10x5\_reg10\_2.txt} est passée d'environ \(687.28\) secondes à
+environ \(15.15\) secondes dans nos tests. Cela montre que, pour ce modèle, le
+temps de résolution dépend autant de la qualité des coupes ajoutées par le
+\textit{callback} que de la taille apparente de l'instance.
