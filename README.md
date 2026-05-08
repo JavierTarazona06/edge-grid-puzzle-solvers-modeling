@@ -9,7 +9,7 @@ Julia and LaTeX project for modeling and comparing exact and heuristic solvers f
 - [Requirements](#requirements)
 - [Julia environments](#julia-environments)
 - [Quick start](#quick-start)
-- [Run Julia for Palisade](#run-julia-for-palisade)
+- [Palisade workflow](#palisade-workflow)
 - [Notes for contributors](#notes-for-contributors)
 
 ## Links
@@ -101,139 +101,207 @@ performanceDiagram("../res/array.pdf")
 
 Generated input instances are written to `sudoku1.0/data/`, and solver outputs are written to subdirectories inside `sudoku1.0/res/`.
 
-## Run Julia for Palisade
+## Palisade workflow
 
-Run Julia commands for the Palisade project from the `palisade/src` directory, because file paths in the current scaffold are written relative to that location.
+Run Palisade commands from `palisade/src`, because the project paths are written relative to that directory.
 
-### Run Tests Fixed Instance
+### 1. Start Julia
 
-To test `readInputFile` in `palisade/src/io.jl` with the instance file `palisade/data/instanceTest.txt`:
-
-1. Go to the `palisade` directory:
+From the repository root:
 
 ```bash
 cd palisade
-```
-
-2. Start Julia with the Palisade environment:
-
-```bash
 julia --project=.
 ```
 
-3. Instantiate the environment if you have not done it yet:
+Inside Julia:
 
 ```julia
 using Pkg
 Pkg.instantiate()
-```
-
-4. Go to the `src` directory inside Julia:
-
-```julia
 cd("src")
 ```
 
-5. Load the file:
+From that point, all examples below assume you are still inside `palisade/src`.
+
+### 2. Read one instance
+
+Load the input/output utilities and read the fixed test instance:
 
 ```julia
 include("io.jl")
+t = readInputFile("../data/instanceTest.txt")
 ```
 
-6. Run the input-reading function:
+`readInputFile()` reads a text grid from `palisade/data/` and returns it as a matrix, using `-1` for empty cells.
+
+### 3. Display an unresolved instance and a solved instance
+
+To show the unresolved puzzle in the terminal:
 
 ```julia
-readInputFile("../data/instanceTest.txt")
+displayGrid(t)
 ```
 
-You can also run the same test in one shell command:
-
-```bash
-cd palisade
-julia --project=. -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); readInputFile("../data/instanceTest.txt")'
-```
-
-### Run CPLEX with Callback on Fixed Instance
-
-To run `cplexSolve(t::Matrix{Int64})` from `palisade/src/resolution.jl` on `palisade/data/instanceTest.txt`, use the following commands. This version solves the base Palisade model and uses a lazy constraint callback to reject disconnected regions during the CPLEX search.
-
-1. Go to the `palisade` directory:
-
-```bash
-cd palisade
-```
-
-2. Start Julia with the Palisade environment:
-
-```bash
-julia --project=.
-```
-
-3. Instantiate the environment if needed:
+To show a solved puzzle, you first need a CPLEX solution because `displaySolution()` uses the wall variables `yh` and `yv`:
 
 ```julia
-using Pkg
-Pkg.instantiate()
+include("resolution.jl")
+isOptimal, x, yh, yv, solveTime = cplexSolve(t)
+displaySolution(t, yh, yv)
 ```
 
-4. Go to the `src` directory inside Julia:
+This is the workflow used for the console screenshots shown in the report.
+
+### 4. Generate one random instance
+
+Load the generator and create one random Palisade grid:
 
 ```julia
-cd("src")
+include("generation.jl")
+grid = generateInstance(6, 6, 9, 0.6)
+displayGrid(grid)
 ```
 
-5. Load the files and solve the fixed instance:
+Arguments:
+
+- `n`, `m`: board dimensions
+- `k`: number of regions
+- `fillRatio`: fraction of clues kept visible
+
+Important condition: the board area `n * m` must be divisible by `k`.
+
+### 5. Generate a dataset in `palisade/data/`
+
+To generate several instances and write them to disk:
 
 ```julia
-include("io.jl")
+include("generation.jl")
+generateDataSet(2, 6, 6, 9, 0.6)
+```
+
+This creates files such as:
+
+```text
+palisade/data/gen_6x6_reg9_1.txt
+palisade/data/gen_6x6_reg9_2.txt
+```
+
+The generated instances are written to `palisade/data/`. Existing files with the same name are not regenerated.
+
+### 6. Solve one instance with CPLEX
+
+To solve one instance with the exact model and the connectivity callback:
+
+```julia
 include("resolution.jl")
 t = readInputFile("../data/instanceTest.txt")
 isOptimal, x, yh, yv, solveTime = cplexSolve(t)
 ```
 
-You can also run steps 1 to 5 in one command and keep the variables available in the Julia session:
-
-```bash
-cd palisade && julia --project=. -i -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); include("resolution.jl"); global t = readInputFile("../data/instanceTest.txt"); global isOptimal, x, yh, yv, solveTime = cplexSolve(t)'
-```
-
-Or run the full fixed-instance test in one shell command:
-
-```bash
-cd palisade && julia --project=. -e 'using Pkg; Pkg.instantiate(); cd("src"); include("io.jl"); include("resolution.jl"); t = readInputFile("../data/instanceTest.txt"); isOptimal, x, yh, yv, solveTime = cplexSolve(t); println("isOptimal = ", isOptimal); println("solveTime = ", solveTime)'
-```
-
-6. Display the main result values:
+For generated instances whose region count is not the default case, you can pass the number of regions explicitly:
 
 ```julia
-println("isOptimal = ", isOptimal)
-println("solveTime = ", solveTime)
-println("yh = ")
-println(JuMP.value.(yh))
-println("yv = ")
-println(JuMP.value.(yv))
-```
-
-You can also inspect the region-assignment variables:
-
-```julia
-println("x[:,:,1] = ")
-println(JuMP.value.(x[:, :, 1]))
-```
-
-To check explicitly that the callback returned connected regions:
-
-```julia
-vals = JuMP.value.(x)
-nbRows, nbCols = size(t)
-nbRegions = div(nbRows * nbCols, 5)
-connected = all(length(connectedComponents([(i, j) for i in 1:nbRows, j in 1:nbCols if vals[i, j, p] > 0.9], nbRows, nbCols)) == 1 for p in 1:nbRegions)
-println("connected = ", connected)
+t = readInputFile("../data/gen_6x6_reg9_1.txt")
+isOptimal, x, yh, yv, solveTime = cplexSolve(t; nbRegions=9)
 ```
 
 This requires a working local CPLEX installation and license.
 
-The same activation pattern applies to `loopy/` and `sudoku1.0/`.
+### 7. Solve one instance with the heuristic
+
+To run the heuristic solver on one instance:
+
+```julia
+include("resolution.jl")
+t = readInputFile("../data/gen_6x6_reg9_1.txt")
+isOptimal, solvedGrid, solveTime = heuristicSolve(t; nbRegions=9)
+```
+
+The heuristic returns:
+
+- `isOptimal`: whether a valid solution was found before the time limit
+- `solvedGrid`: the region assignment found by the search
+- `solveTime`: elapsed resolution time
+
+### 8. Solve all instances in `palisade/data/`
+
+To run both methods on every `.txt` instance stored in `palisade/data/`:
+
+```julia
+include("resolution.jl")
+solveDataSet()
+```
+
+Useful variants:
+
+```julia
+solveDataSet(methods="cplex")
+solveDataSet(methods="heuristic")
+solveDataSet(methods="heuristique")
+solveDataSet(timeLimit=100.0)
+```
+
+How it works:
+
+- it reads every instance from `palisade/data/`
+- it solves each instance with the selected method(s)
+- it writes one result file per instance
+
+Output folders:
+
+- `palisade/res/cplex/`
+- `palisade/res/heuristic/`
+
+Each result file contains at least:
+
+```text
+solveTime = ...
+isOptimal = ...
+```
+
+The files also store:
+
+```text
+regionSize = ...
+```
+
+If a result file already exists with the same `regionSize`, `solveDataSet()` does not recompute that instance.
+
+### 9. Export result tables and a performance diagram
+
+The professor-provided functions are in `io.jl`.
+
+Generate a LaTeX table with all current results:
+
+```julia
+include("io.jl")
+resultsArray("../res/results_array.tex")
+```
+
+Generate a PDF performance diagram from the `res/` folders:
+
+```julia
+performanceDiagram("../res/performance_diagram.pdf")
+```
+
+If you want to restrict the benchmark to generated instances only and exclude `instanceTest.txt`:
+
+```julia
+resultsArray("../res/results_array_generated.tex"; generatedOnly=true)
+performanceDiagram("../res/performance_diagram_generated.pdf"; generatedOnly=true)
+```
+
+### 10. Regenerate the Palisade report artifacts
+
+The small analysis pipeline used for the report can be rerun with:
+
+```bash
+cd palisade
+julia --project=. src/analysis_results.jl
+```
+
+This regenerates the Palisade tables and figures used in `docs/rapport/`.
 
 ## Notes for contributors
 

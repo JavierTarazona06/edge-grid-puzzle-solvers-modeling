@@ -1,0 +1,15 @@
+\subsubsection{Résolution de plusieurs instances}
+
+La fonction \texttt{solveDataSet()} permet d'automatiser la résolution d'un ensemble d'instances sans relancer manuellement le solveur pour chaque fichier. Son principe est volontairement direct : elle parcourt tous les fichiers texte présents dans le répertoire \texttt{palisade/data/}, lit chaque grille avec \texttt{readInputFile()}, puis lance la méthode de résolution demandée.
+
+Le comportement dépend du paramètre \texttt{methods}. On peut exécuter uniquement \texttt{cplex}, uniquement \texttt{heuristic}, ou les deux successivement. Pour chaque instance, la fonction détermine aussi la taille des régions à utiliser, soit à partir des paramètres fournis, soit à partir du nom du fichier lorsque celui-ci suit le format des instances générées.
+
+Les résultats sont ensuite enregistrés automatiquement dans un fichier texte portant le même nom que l'instance :
+\begin{itemize}
+    \item dans \texttt{palisade/res/cplex/} pour la résolution exacte ;
+    \item dans \texttt{palisade/res/heuristic/} pour la résolution heuristique.
+\end{itemize}
+
+Chaque fichier de sortie contient au minimum les variables \texttt{solveTime} et \texttt{isOptimal}, qui sont ensuite réutilisées par les fonctions d'analyse comme \texttt{resultsArray()} et \texttt{performanceDiagram()}. Dans notre implémentation, on conserve également la variable \texttt{regionSize}, ce qui permet de vérifier rapidement avec quelle taille de région l'instance a été résolue.
+
+Enfin, si un fichier de résultat existe déjà avec la même valeur de \texttt{regionSize}, \texttt{solveDataSet()} ne relance pas inutilement la résolution de cette instance. Cela permet de reprendre une campagne d'expériences sans recalculer toutes les sorties déjà obtenues.

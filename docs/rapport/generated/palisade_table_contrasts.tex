@@ -1,0 +1,19 @@
+\begingroup
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{table}[H]
+\centering
+\caption{Instances contrastées de même taille : structure des indices et temps obtenus.}
+\label{tab:palisade-contrast}
+\begin{tabular}{lrrrrrrr}
+\toprule
+Instance & \#indices & Densité & \#1 & \#2 & \#3 & Temps CPLEX (s) & Temps heuristique (s)\\
+\midrule
+\texttt{gen\_8x5\_reg8\_1} & 25 & 0.625 & 1 & 17 & 7 & 19.96 & 0.28\\
+\texttt{gen\_8x5\_reg8\_2} & 29 & 0.725 & 4 & 13 & 12 & 0.09 & timeout\\
+\texttt{gen\_10x5\_reg10\_1} & 25 & 0.500 & 3 & 11 & 11 & 4.04 & timeout\\
+\texttt{gen\_10x5\_reg10\_2} & 36 & 0.720 & 1 & 21 & 14 & 20.68 & timeout\\
+\bottomrule
+\end{tabular}
+\end{table}
+\endgroup

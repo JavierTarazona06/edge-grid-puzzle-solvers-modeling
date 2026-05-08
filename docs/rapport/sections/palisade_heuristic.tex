@@ -1,0 +1,25 @@
+\subsubsection{Heuristique de résolution}
+
+La méthode \texttt{heuristicSolve()} repose sur une recherche récursive en profondeur. Plus précisément, il s'agit d'un \textit{backtracking} de type DFS dans lequel la grille est parcourue case par case, suivant un ordre fixe ligne par ligne, puis colonne par colonne. Pour chaque case, l'algorithme essaie successivement tous les identifiants de région possibles, de \(1\) à \(k\), puis poursuit la construction tant que les contraintes déjà observables restent compatibles avec une solution finale.
+
+L'idée principale n'est donc pas de tester aveuglément toutes les affectations, mais d'écarter très tôt les branchements qui deviennent incohérents. Pour cela, la fonction \texttt{isValidMove()} applique deux validations immédiates avant de prolonger la récursion.
+
+La première validation concerne la capacité des régions. Une région ne peut jamais contenir plus de \texttt{regionSize} cases. Dès qu'une affectation temporaire ferait dépasser cette taille, le branchement est abandonné.
+
+La seconde validation concerne les indices visibles sur la grille. Lorsqu'une case est affectée provisoirement à une région, l'algorithme vérifie la cohérence des indices sur cette case ainsi que sur ses quatre voisines directes. Pour chaque indice visible, il calcule :
+\begin{itemize}
+    \item le nombre de murs déjà certains, noté \texttt{confirmedWalls} ;
+    \item le nombre maximal de murs encore possibles, noté \texttt{potentialWalls}.
+\end{itemize}
+
+Le branchement est coupé dans deux situations :
+\begin{itemize}
+    \item si \texttt{confirmedWalls} dépasse la valeur de l'indice ;
+    \item si \texttt{potentialWalls} devient inférieur à la valeur de l'indice.
+\end{itemize}
+
+Autrement dit, dès qu'un indice ne peut plus être satisfait, soit parce qu'il y a déjà trop de murs, soit parce qu'il n'est plus possible d'en obtenir assez, la recherche revient immédiatement en arrière. Cette vérification locale permet de réduire fortement le nombre d'affectations explorées inutilement.
+
+La connexité complète des régions n'est pas imposée pendant la construction partielle de la solution. Elle est contrôlée uniquement lorsque toute la grille a été affectée, au moyen de la fonction \texttt{checkConnectivity()}, qui parcourt chaque région pour vérifier qu'elle forme bien une unique composante connexe de taille correcte.
+
+Enfin, l'heuristique intègre aussi une limite de temps. Un \textit{deadline} est transmis à la procédure récursive, ce qui permet d'interrompre proprement la recherche lorsqu'une instance devient trop coûteuse à explorer dans le temps imparti.
