@@ -18,7 +18,7 @@ jobs:
       - name: Set up Julia
         uses: julia-actions/setup-julia@v2
         with:
-          version: '1.10'
+          version: '1.12'
 
       - name: Cache Julia artifacts
         uses: julia-actions/cache@v2
@@ -28,8 +28,11 @@ jobs:
           GKSwstype: "100"
         run: |
           cd palisade
-          julia --project=. -e 'using Pkg; Pkg.instantiate()'
-          julia --project=. src/analysis_results.jl
+          julia -e 'using Pkg; Pkg.activate(".ci-report-env"); Pkg.add([
+            Pkg.PackageSpec(name="JuMP", version="1"),
+            Pkg.PackageSpec(name="Plots", version="1"),
+            Pkg.PackageSpec(name="GR", version="0.73")
+          ]); include("src/analysis_results.jl"); generate_report_artifacts()'
 
       - name: Configure GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
