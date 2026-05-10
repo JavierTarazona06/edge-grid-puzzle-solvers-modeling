@@ -168,7 +168,7 @@ On crée dans le répertoire \texttt{data} un fichier \texttt{instanceTest.txt} 
 
 Dans ce jeu, une instance est définie par une grille contenant :
 \begin{itemize}
-    \item des entiers entre 0 et 4 indiquant le nombre d’arêtes à sélectionner autour d’une case ;
+    \item des entiers entre 0 et 3 indiquant le nombre d’arêtes à sélectionner autour d’une case ;
     \item des cases vides (sans contrainte).
 \end{itemize}
 
@@ -213,7 +213,7 @@ Cette section présente les principales fonctions développées pour manipuler l
 
 Les instances du jeu \textit{Loopy} sont représentées par une matrice d'entiers. Chaque case de la grille correspond à une valeur :
 \begin{itemize}
-    \item une valeur entre \(0\) et \(4\) représente une case contenant un indice ;
+    \item une valeur entre \(0\) et \(3\) représente une case contenant un indice ;
     \item la valeur \(-1\) représente une case vide, c'est-à-dire une case sans contrainte.
 \end{itemize}
 
@@ -274,11 +274,11 @@ Cette représentation permet de vérifier rapidement la forme de la boucle obten
 
 Afin de tester le modèle sur plusieurs types de grilles, nous avons implémenté une fonction \texttt{generateInstance}. Cette fonction génère une grille aléatoire de taille donnée. Le paramètre \texttt{density} contrôle la proportion approximative de cases contenant un indice.
 
-Chaque case est initialement vide, donc égale à \(-1\). Ensuite, pour chaque case, un indice est ajouté avec une probabilité égale à \texttt{density}. Si un indice est ajouté, sa valeur est choisie aléatoirement entre \(0\) et \(4\).
+Chaque case est initialement vide, donc égale à \(-1\). Ensuite, pour chaque case, un indice est ajouté avec une probabilité égale à \texttt{density}. Si un indice est ajouté, sa valeur est choisie aléatoirement entre \(0\) et \(3\).
 
 \begin{verbatim}
 if rand() <= density
-    grid[i, j] = rand(0:4)
+    grid[i, j] = rand(0:3)
 end
 \end{verbatim}
 
@@ -580,47 +580,83 @@ Le tableau suivant présente les temps moyens de calcul par taille de grille. Le
 \hline
 \textbf{Taille} & \textbf{Temps moyen CPLEX (s)} & \textbf{Temps moyen heuristique (s)} \\
 \hline
-\(4 \times 4\) & 0.153 & 10.669 \\
-\(5 \times 5\) & 0.004 & 17.344 \\
-\(6 \times 6\) & 0.004 & 14.725 \\
-\(7 \times 7\) & 0.001 & 17.339 \\
-\(8 \times 8\) & 0.004 & 19.083 \\
+\(4 \times 4\) & 0.167 & 9.337 \\
+\(5 \times 5\) & 0.004 & 14.676 \\
+\(6 \times 6\) & 0.005 & 12.096 \\
+\(7 \times 7\) & 0.009 & 13.747 \\
+\(8 \times 8\) & 0.002 & 19.370 \\
 \hline
 \end{tabular}
 \end{center}
 
-On remarque que CPLEX retourne une réponse très rapidement sur la majorité des instances. La plupart des temps sont proches de \(0\) seconde. Le temps le plus élevé observé pour CPLEX est d'environ \(2.23\) secondes.
+On remarque que CPLEX retourne une réponse très rapidement sur la majorité des instances. Les temps moyens restent très faibles pour toutes les tailles testées. Le temps moyen le plus élevé est observé pour les instances de taille \(4 \times 4\), principalement à cause d'une instance résolue en \(2.29\) secondes. Pour les autres tailles, les temps moyens restent proches de zéro.
 
-Pour l'heuristique, les temps moyens sont plus élevés. Cela vient du fait que l'heuristique atteint souvent sa limite de temps de \(20\) secondes lorsqu'elle ne trouve pas de solution. En revanche, lorsqu'une solution est trouvée rapidement, le temps peut être très faible.
+Pour l'heuristique, les temps moyens sont nettement plus élevés. Cela s'explique par le fait que l'heuristique atteint souvent sa limite de temps de \(20\) secondes lorsqu'elle ne trouve pas de solution. En revanche, lorsqu'une solution est trouvée, le temps peut être faible, parfois inférieur à une seconde.
+
+Ces résultats montrent donc que, sur les instances testées, le modèle PLNE avec CPLEX est très rapide pour conclure, alors que l'heuristique est plus irrégulière : elle peut trouver certaines solutions rapidement, mais elle peut aussi échouer et atteindre la limite de temps.
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
     ybar,
-    width=0.82\textwidth,
-    height=6cm,
-    bar width=12pt,
-    ylabel={Temps moyen (s)},
+    width=0.75\textwidth,
+    height=5.5cm,
+    bar width=16pt,
+    ylabel={Temps moyen CPLEX (s)},
     xlabel={Taille de la grille},
     symbolic x coords={4x4,5x5,6x6,7x7,8x8},
     xtick=data,
     ymin=0,
-    legend style={at={(0.5,-0.18)},anchor=north,legend columns=2},
+    ymax=0.18,
     nodes near coords,
     nodes near coords align={vertical},
 ]
-\addplot coordinates {(4x4,0.153) (5x5,0.004) (6x6,0.004) (7x7,0.001) (8x8,0.004)};
-\addplot coordinates {(4x4,10.669) (5x5,17.344) (6x6,14.725) (7x7,17.339) (8x8,19.083)};
-\legend{CPLEX, Heuristique}
+\addplot coordinates {
+    (4x4,0.167)
+    (5x5,0.004)
+    (6x6,0.005)
+    (7x7,0.009)
+    (8x8,0.002)
+};
 \end{axis}
 \end{tikzpicture}
-\caption{Temps moyen de résolution selon la taille de la grille.}
+\caption{Temps moyen de résolution avec CPLEX selon la taille de la grille.}
 \end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    width=0.75\textwidth,
+    height=5.5cm,
+    bar width=16pt,
+    ylabel={Temps moyen heuristique (s)},
+    xlabel={Taille de la grille},
+    symbolic x coords={4x4,5x5,6x6,7x7,8x8},
+    xtick=data,
+    ymin=0,
+    ymax=22,
+    nodes near coords,
+    nodes near coords align={vertical},
+]
+\addplot coordinates {
+    (4x4,9.337)
+    (5x5,14.676)
+    (6x6,12.096)
+    (7x7,13.747)
+    (8x8,19.370)
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Temps moyen de résolution avec l'heuristique selon la taille de la grille.}
+\end{figure}
+
 
 \subsubsection{Taux de résolution}
 
-Le tableau suivant présente le nombre d'instances résolues par chaque méthode, regroupé par taille de grille.
+Le tableau suivant présente le nombre d'instances résolues par chaque méthode, regroupé par taille de grille. On considère ici les \(15\) instances générées pour chaque taille, toutes densités confondues.
 
 \begin{center}
 \renewcommand{\arraystretch}{1.2}
@@ -628,26 +664,25 @@ Le tableau suivant présente le nombre d'instances résolues par chaque méthode
 \hline
 \textbf{Taille} & \textbf{Nb. instances} & \textbf{CPLEX résolues} & \textbf{Heuristique résolues} \\
 \hline
-\(4 \times 4\) & 15 & 6 & 7 \\
-\(5 \times 5\) & 15 & 1 & 2 \\
-\(6 \times 6\) & 15 & 1 & 4 \\
-\(7 \times 7\) & 15 & 2 & 2 \\
-\(8 \times 8\) & 15 & 0 & 1 \\
+\(4 \times 4\) & 15 & 8 & 8 \\
+\(5 \times 5\) & 15 & 4 & 4 \\
+\(6 \times 6\) & 15 & 6 & 6 \\
+\(7 \times 7\) & 15 & 6 & 5 \\
+\(8 \times 8\) & 15 & 1 & 1 \\
 \hline
-\textbf{Total} & \textbf{75} & \textbf{10} & \textbf{16} \\
+\textbf{Total} & \textbf{75} & \textbf{25} & \textbf{24} \\
 \hline
 \end{tabular}
 \end{center}
 
-Les taux de résolution globaux sont donc :
+Les taux de résolution globaux sur les instances générées sont donc :
 \[
-\text{Taux CPLEX} = \frac{10}{75} \approx 13.3\%,
+\text{Taux CPLEX} = \frac{25}{75} \approx 33.3\%,
 \]
 \[
-\text{Taux heuristique} = \frac{16}{75} \approx 21.3\%.
+\text{Taux heuristique} = \frac{24}{75} = 32.0\%.
 \]
 
-En ajoutant l'instance de test manuelle, les deux méthodes trouvent également une solution pour \texttt{instanceTest.txt}. Le total devient donc \(11\) instances résolues pour CPLEX et \(17\) pour l'heuristique sur \(76\) instances testées.
 
 \begin{figure}[H]
 \centering
@@ -667,25 +702,29 @@ En ajoutant l'instance de test manuelle, les deux méthodes trouvent également 
     nodes near coords,
     nodes near coords align={vertical},
 ]
-\addplot coordinates {(4x4,6) (5x5,1) (6x6,1) (7x7,2) (8x8,0)};
-\addplot coordinates {(4x4,7) (5x5,2) (6x6,4) (7x7,2) (8x8,1)};
+\addplot coordinates {(4x4,8) (5x5,4) (6x6,6) (7x7,6) (8x8,1)};
+\addplot coordinates {(4x4,8) (5x5,4) (6x6,6) (7x7,5) (8x8,1)};
 \legend{CPLEX, Heuristique}
 \end{axis}
 \end{tikzpicture}
 \caption{Nombre d'instances résolues par taille de grille.}
 \end{figure}
 
-On observe que le nombre d'instances résolues diminue lorsque la taille de la grille augmente. Ce comportement est attendu, car le nombre d'arêtes et de sommets augmente avec la taille de l'instance. Le modèle exact devient donc plus complexe, et l'espace de recherche de l'heuristique devient également plus grand.
+On observe que les deux méthodes obtiennent des taux de résolution assez proches sur l'ensemble des instances générées. CPLEX résout \(25\) instances, tandis que l'heuristique en résout \(24\). La différence principale entre les deux méthodes n'est donc pas seulement le nombre d'instances résolues, mais aussi le temps nécessaire pour conclure.
 
-Il faut aussi noter que les instances générées aléatoirement ne sont pas nécessairement réalisables. Ainsi, lorsqu'aucune solution n'est trouvée, cela ne signifie pas forcément que la méthode échoue : l'instance peut aussi être infaisable.
+En effet, CPLEX retourne souvent une réponse très rapidement, que l'instance soit réalisable ou non. L'heuristique, au contraire, peut trouver certaines solutions rapidement, mais atteint souvent la limite de temps lorsqu'elle ne parvient pas à construire une solution valide.
+
+On remarque également que les instances de taille \(8 \times 8\) sont beaucoup plus difficiles : une seule instance est résolue par chaque méthode. Cela est cohérent avec l'augmentation du nombre d'arêtes, de sommets et donc de la taille de l'espace de recherche.
+
+Enfin, il faut noter que les instances sont générées aléatoirement et ne sont pas nécessairement réalisables. Ainsi, lorsqu'aucune solution n'est trouvée, cela ne signifie pas forcément que la méthode échoue : l'instance peut aussi être infaisable.
 
 \subsubsection{Taille maximale résolue}
 
-D'après les résultats obtenus, la méthode exacte par CPLEX avec callback trouve des solutions jusqu'à la taille \(7 \times 7\). Aucune instance générée de taille \(8 \times 8\) n'a été résolue par CPLEX dans notre série de tests.
+D'après les résultats obtenus, la méthode exacte par CPLEX avec callback trouve des solutions jusqu'à la taille \(8 \times 8\). En effet, une instance générée de taille \(8 \times 8\) a été résolue par CPLEX dans notre série de tests.
 
-L'heuristique trouve au moins une solution jusqu'à la taille \(8 \times 8\). Cependant, ce résultat doit être interprété avec prudence. En effet, l'heuristique utilise une fonction de score qui vérifie principalement les contraintes locales : respect des indices et degrés des sommets. Elle ne garantit pas systématiquement l'unicité globale de la boucle.
+L'heuristique trouve également au moins une solution jusqu'à la taille \(8 \times 8\). Cependant, ce résultat doit être interprété avec prudence. En effet, l'heuristique repose principalement sur une fonction de score qui pénalise les violations des contraintes locales : respect des indices et degrés des sommets. Elle permet donc de trouver rapidement de bonnes configurations candidates, mais elle ne garantit pas systématiquement l'unicité globale de la boucle.
 
-Ainsi, pour obtenir une solution rigoureusement valide du jeu \textit{Loopy}, la méthode exacte avec callback reste la méthode la plus fiable. L'heuristique est plutôt utilisée comme une méthode rapide permettant de trouver de bonnes configurations candidates.
+Ainsi, pour obtenir une solution rigoureusement valide du jeu \textit{Loopy}, la méthode exacte avec callback reste la méthode la plus fiable. L'heuristique constitue plutôt une méthode complémentaire, utile pour explorer rapidement l'espace des solutions.
 
 \subsubsection{Gap éventuel}
 
@@ -706,24 +745,23 @@ L'évaluation expérimentale repose donc principalement sur :
 
 \subsubsection{Bilan}
 
-Les résultats montrent que la résolution exacte avec callback est très rapide sur les instances où elle trouve une solution. Elle a l'avantage de garantir la validité complète de la solution, notamment l'unicité de la boucle.
+Les résultats montrent que la résolution exacte avec callback est très rapide sur les instances où elle conclut. Elle permet de résoudre certaines instances jusqu'à la taille \(8 \times 8\), tout en garantissant la validité complète de la solution, notamment l'unicité de la boucle.
 
-L'heuristique trouve davantage de solutions candidates dans nos tests, mais elle ne garantit pas toujours la contrainte globale d'unicité. Elle constitue donc une méthode complémentaire intéressante, mais moins rigoureuse que l'approche exacte.
+L'heuristique obtient des résultats proches en nombre d'instances résolues, mais elle ne garantit pas toujours la contrainte globale d'unicité. Elle constitue donc une méthode complémentaire intéressante, mais moins rigoureuse que l'approche exacte.
 
-Enfin, la difficulté augmente avec la taille des grilles et avec la structure des indices. Les instances générées aléatoirement peuvent également être infaisables, ce qui explique en partie les faibles taux de résolution observés.
-
+Enfin, la difficulté augmente avec la taille des grilles et avec la structure des indices. Les instances générées aléatoirement peuvent également être infaisables, ce qui explique en partie les taux de résolution observés.
 
 \subsection{Discussion}
 
 Les résultats obtenus montrent que la résolution du jeu \textit{Loopy} dépend fortement de la structure des instances. Même pour des grilles de taille modérée, certaines instances deviennent difficiles à résoudre, notamment lorsque les indices imposent des contraintes fortes ou contradictoires.
 
-La modélisation PLNE permet de représenter efficacement les contraintes locales du jeu. Les contraintes sur les cases numérotées assurent le respect des indices, tandis que les contraintes sur les sommets empêchent les extrémités libres et les branchements. Cependant, ces contraintes ne suffisent pas à garantir l'existence d'une unique boucle. Elles autorisent encore plusieurs cycles disjoints.
+La modélisation PLNE permet de représenter efficacement les contraintes locales du jeu. Les contraintes sur les cases numérotées assurent le respect des indices, tandis que les contraintes sur les sommets empêchent les extrémités libres et les branchements. Cependant, ces contraintes ne suffisent pas à garantir l'existence d'une unique boucle. Elles peuvent encore autoriser plusieurs cycles disjoints.
 
 Le callback joue donc un rôle essentiel. Il permet de traiter dynamiquement la contrainte globale d'unicité de la boucle. Au lieu d'ajouter dès le départ un très grand nombre de contraintes interdisant toutes les sous-boucles possibles, le callback ajoute uniquement les contraintes nécessaires lorsqu'une solution entière invalide est détectée. Cette approche permet de garder un modèle initial plus léger.
 
-La méthode exacte avec CPLEX présente l'avantage de fournir une validation rigoureuse des solutions obtenues. Lorsqu'une solution est retournée par le modèle avec callback, elle respecte à la fois les contraintes locales et la contrainte globale d'unicité de la boucle. En revanche, cette méthode peut devenir limitée lorsque la taille des instances augmente ou lorsque les instances générées sont difficiles.
+La méthode exacte avec CPLEX présente l'avantage de fournir une validation rigoureuse des solutions obtenues. Lorsqu'une solution est retournée par le modèle avec callback, elle respecte à la fois les contraintes locales et la contrainte globale d'unicité de la boucle. En revanche, cette méthode peut devenir plus limitée lorsque la taille des instances augmente ou lorsque les instances générées sont difficiles.
 
-L'heuristique, quant à elle, est plus simple et plus rapide à mettre en œuvre. Elle repose sur une recherche locale et sur une fonction de score pénalisant les violations des contraintes locales. Elle peut trouver rapidement des configurations intéressantes, parfois même lorsque CPLEX ne retourne pas de solution dans nos tests. Toutefois, elle ne garantit pas toujours l'unicité globale de la boucle. Une solution de score nul peut encore contenir plusieurs cycles disjoints.
+L'heuristique, quant à elle, est plus simple à mettre en œuvre. Elle repose sur une recherche locale et sur une fonction de score pénalisant les violations des contraintes locales. Elle peut trouver rapidement certaines configurations intéressantes. Toutefois, elle ne garantit pas toujours l'unicité globale de la boucle : une solution satisfaisant les contraintes locales peut encore contenir plusieurs cycles disjoints.
 
 Il faut également souligner que les instances générées aléatoirement ne sont pas nécessairement réalisables. Ainsi, lorsqu'une méthode ne trouve pas de solution, cela ne signifie pas forcément que la méthode échoue : l'instance peut simplement être infaisable. Pour obtenir une analyse plus précise, il serait intéressant de générer des instances à partir de solutions connues, puis de retirer progressivement certains indices.
 
@@ -737,9 +775,9 @@ La principale difficulté du problème est la contrainte d'unicité de la boucle
 
 Nous avons également implémenté les fonctions nécessaires à la manipulation des instances : lecture depuis un fichier texte, affichage en console, génération automatique d'instances, résolution de plusieurs instances et sauvegarde des résultats. Une méthode heuristique basée sur une recherche locale a aussi été développée afin de comparer une approche approchée avec la résolution exacte.
 
-Les expériences montrent que CPLEX avec callback fournit une méthode rigoureuse, capable de garantir la validité complète des solutions obtenues. L'heuristique permet parfois de trouver rapidement des configurations satisfaisant les contraintes locales, mais elle ne garantit pas toujours l'unicité de la boucle. Les résultats montrent aussi que la difficulté augmente avec la taille des grilles et que les instances générées aléatoirement peuvent être infaisables.
+Les expériences montrent que CPLEX avec callback fournit une méthode rigoureuse, capable de garantir la validité complète des solutions obtenues. Dans nos tests, cette méthode parvient à résoudre certaines instances jusqu'à la taille \(8 \times 8\). L'heuristique permet également de trouver des configurations candidates, mais elle ne garantit pas toujours l'unicité globale de la boucle.
 
-Comme amélioration possible, on pourrait développer un générateur d'instances réalisables à partir de boucles connues. Cela permettrait de mieux comparer les méthodes sur des instances dont on sait qu'elles admettent au moins une solution. On pourrait également renforcer l'heuristique en ajoutant une vérification explicite de la connexité afin de mieux prendre en compte la contrainte globale du jeu.
+Les résultats montrent aussi que la difficulté augmente avec la taille des grilles et que les instances générées aléatoirement peuvent être infaisables. Comme amélioration possible, on pourrait développer un générateur d'instances réalisables à partir de boucles connues. Cela permettrait de mieux comparer les méthodes sur des instances dont on sait qu'elles admettent au moins une solution. On pourrait également renforcer l'heuristique en ajoutant une vérification explicite de la connexité afin de mieux prendre en compte la contrainte globale du jeu.
 
 
 
@@ -747,7 +785,7 @@ Comme amélioration possible, on pourrait développer un générateur d'instance
 
 \subsubsection{Exemple d'instance}
 
-Voici un exemple de fichier texte représentant une instance du jeu \textit{Loopy}. Les cases vides sont représentées par des espaces, tandis que les cases contraintes contiennent un entier entre \(0\) et \(4\).
+Voici un exemple de fichier texte représentant une instance du jeu \textit{Loopy}. Les cases vides sont représentées par des espaces, tandis que les cases contraintes contiennent un entier entre \(0\) et \(3\).
 
 \begin{verbatim}
  ,2, ,1
@@ -789,15 +827,14 @@ Une valeur \(1\) signifie que l'arête est sélectionnée, tandis qu'une valeur 
 \hline
 \textbf{Instance} & \textbf{CPLEX t. (s)} & \textbf{CPLEX ok} & \textbf{Heur. t. (s)} & \textbf{Heur. ok} \\
 \hline
-
-generated\_4x4\_d0.2\_1.txt & 2.23 & 
+generated\_4x4\_d0.2\_1.txt & 2.29 & 
 $\times$
  & 0.0 & 
 $\times$
 \\
-generated\_4x4\_d0.2\_2.txt & 0.01 & 
+generated\_4x4\_d0.2\_2.txt & 0.0 & 
 $\times$
- & 0.01 & 
+ & 0.0 & 
 $\times$
 \\
 generated\_4x4\_d0.2\_3.txt & 0.0 & 
@@ -805,48 +842,51 @@ $\times$
  & 0.0 & 
 $\times$
 \\
-generated\_4x4\_d0.2\_4.txt & 0.0 & 
- & 0.0 & 
-$\times$
-\\
-generated\_4x4\_d0.2\_5.txt & 0.0 & 
+generated\_4x4\_d0.2\_4.txt & 0.16 & 
 $\times$
  & 0.0 & 
 $\times$
 \\
-generated\_4x4\_d0.3\_1.txt & 0.0 & 
+generated\_4x4\_d0.2\_5.txt & 0.01 & 
+$\times$
+ & 0.0 & 
+$\times$
+\\
+generated\_4x4\_d0.3\_1.txt & 0.01 & 
+ & 20.0 & 
+\\
+generated\_4x4\_d0.3\_2.txt & 0.01 & 
  & 20.01 & 
-\\
-generated\_4x4\_d0.3\_2.txt & 0.02 & 
-$\times$
- & 0.0 & 
-$\times$
 \\
 generated\_4x4\_d0.3\_3.txt & 0.0 & 
- & 20.0 & 
-\\
-generated\_4x4\_d0.3\_4.txt & 0.01 & 
  & 20.01 & 
 \\
-generated\_4x4\_d0.3\_5.txt & 0.0 & 
- & 20.0 & 
-\\
-generated\_4x4\_d0.4\_1.txt & 0.01 & 
+generated\_4x4\_d0.3\_4.txt & 0.01 & 
 $\times$
  & 0.0 & 
 $\times$
+\\
+generated\_4x4\_d0.3\_5.txt & 0.01 & 
+$\times$
+ & 0.0 & 
+$\times$
+\\
+generated\_4x4\_d0.4\_1.txt & 0.0 & 
+ & 20.0 & 
 \\
 generated\_4x4\_d0.4\_2.txt & 0.0 & 
  & 20.0 & 
 \\
 generated\_4x4\_d0.4\_3.txt & 0.0 & 
- & 20.01 & 
+$\times$
+ & 0.01 & 
+$\times$
 \\
 generated\_4x4\_d0.4\_4.txt & 0.0 & 
- & 20.0 & 
+ & 20.01 & 
 \\
-generated\_4x4\_d0.4\_5.txt & 0.01 & 
- & 20.0 & 
+generated\_4x4\_d0.4\_5.txt & 0.0 & 
+ & 20.01 & 
 \\
 generated\_5x5\_d0.2\_1.txt & 0.0 & 
  & 20.0 & 
@@ -857,125 +897,144 @@ $\times$
 $\times$
 \\
 generated\_5x5\_d0.2\_3.txt & 0.0 & 
- & 20.01 & 
+$\times$
+ & 0.01 & 
+$\times$
 \\
-generated\_5x5\_d0.2\_4.txt & 0.0 & 
- & 20.0 & 
+generated\_5x5\_d0.2\_4.txt & 0.01 & 
+$\times$
+ & 0.02 & 
+$\times$
 \\
-generated\_5x5\_d0.2\_5.txt & 0.0 & 
- & 20.0 & 
+generated\_5x5\_d0.2\_5.txt & 0.02 & 
+$\times$
+ & 0.05 & 
+$\times$
 \\
 generated\_5x5\_d0.3\_1.txt & 0.0 & 
- & 20.0 & 
+ & 20.01 & 
 \\
 generated\_5x5\_d0.3\_2.txt & 0.0 & 
  & 20.01 & 
 \\
-generated\_5x5\_d0.3\_3.txt & 0.02 & 
- & 0.08 & 
-$\times$
+generated\_5x5\_d0.3\_3.txt & 0.01 & 
+ & 20.01 & 
 \\
 generated\_5x5\_d0.3\_4.txt & 0.0 & 
  & 20.01 & 
 \\
-generated\_5x5\_d0.3\_5.txt & 0.0 & 
+generated\_5x5\_d0.3\_5.txt & 0.01 & 
  & 20.0 & 
 \\
-generated\_5x5\_d0.4\_1.txt & 0.01 & 
+generated\_5x5\_d0.4\_1.txt & 0.0 & 
  & 20.0 & 
 \\
 generated\_5x5\_d0.4\_2.txt & 0.0 & 
- & 20.01 & 
+ & 20.0 & 
 \\
 generated\_5x5\_d0.4\_3.txt & 0.0 & 
- & 20.01 & 
-\\
-generated\_5x5\_d0.4\_4.txt & 0.01 & 
  & 20.0 & 
 \\
-generated\_5x5\_d0.4\_5.txt & 0.01 & 
- & 20.01 & 
-\\
-generated\_6x6\_d0.2\_1.txt & 0.0 & 
+generated\_5x5\_d0.4\_4.txt & 0.0 & 
  & 20.0 & 
 \\
-generated\_6x6\_d0.2\_2.txt & 0.0 & 
+generated\_5x5\_d0.4\_5.txt & 0.0 & 
  & 20.0 & 
+\\
+generated\_6x6\_d0.2\_1.txt & 0.02 & 
+$\times$
+ & 0.02 & 
+$\times$
+\\
+generated\_6x6\_d0.2\_2.txt & 0.02 & 
+$\times$
+ & 0.01 & 
+$\times$
 \\
 generated\_6x6\_d0.2\_3.txt & 0.01 & 
 $\times$
- & 0.05 & 
+ & 0.26 & 
 $\times$
 \\
-generated\_6x6\_d0.2\_4.txt & 0.01 & 
- & 0.55 & 
+generated\_6x6\_d0.2\_4.txt & 0.0 & 
+$\times$
+ & 0.03 & 
 $\times$
 \\
-generated\_6x6\_d0.2\_5.txt & 0.02 & 
- & 0.19 & 
+generated\_6x6\_d0.2\_5.txt & 0.01 & 
+$\times$
+ & 0.14 & 
 $\times$
 \\
-generated\_6x6\_d0.3\_1.txt & 0.0 & 
- & 20.0 & 
+generated\_6x6\_d0.3\_1.txt & 0.02 & 
+$\times$
+ & 0.96 & 
+$\times$
 \\
 generated\_6x6\_d0.3\_2.txt & 0.0 & 
  & 20.0 & 
 \\
-generated\_6x6\_d0.3\_3.txt & 0.01 & 
- & 0.05 & 
-$\times$
+generated\_6x6\_d0.3\_3.txt & 0.0 & 
+ & 20.0 & 
 \\
 generated\_6x6\_d0.3\_4.txt & 0.0 & 
  & 20.0 & 
 \\
 generated\_6x6\_d0.3\_5.txt & 0.0 & 
- & 20.01 & 
+ & 20.0 & 
 \\
 generated\_6x6\_d0.4\_1.txt & 0.0 & 
  & 20.01 & 
 \\
 generated\_6x6\_d0.4\_2.txt & 0.0 & 
- & 20.01 & 
+ & 20.0 & 
 \\
 generated\_6x6\_d0.4\_3.txt & 0.0 & 
  & 20.0 & 
 \\
-generated\_6x6\_d0.4\_4.txt & 0.01 & 
- & 20.01 & 
+generated\_6x6\_d0.4\_4.txt & 0.0 & 
+ & 20.0 & 
 \\
 generated\_6x6\_d0.4\_5.txt & 0.0 & 
- & 20.0 & 
+ & 20.01 & 
 \\
-generated\_7x7\_d0.2\_1.txt & 0.0 & 
- & 20.0 & 
-\\
-generated\_7x7\_d0.2\_2.txt & 0.01 & 
+generated\_7x7\_d0.2\_1.txt & 0.02 & 
 $\times$
- & 0.02 & 
+ & 1.9 & 
 $\times$
 \\
-generated\_7x7\_d0.2\_3.txt & 0.0 & 
+generated\_7x7\_d0.2\_2.txt & 0.02 & 
 $\times$
- & 0.0 & 
+ & 2.58 & 
 $\times$
 \\
-generated\_7x7\_d0.2\_4.txt & 0.0 & 
- & 20.0 & 
+generated\_7x7\_d0.2\_3.txt & 0.04 & 
+$\times$
+ & 0.36 & 
+$\times$
 \\
-generated\_7x7\_d0.2\_5.txt & 0.0 & 
- & 20.0 & 
+generated\_7x7\_d0.2\_4.txt & 0.01 & 
+ & 20.01 & 
+\\
+generated\_7x7\_d0.2\_5.txt & 0.01 & 
+$\times$
+ & 0.47 & 
+$\times$
 \\
 generated\_7x7\_d0.3\_1.txt & 0.0 & 
- & 20.01 & 
-\\
-generated\_7x7\_d0.3\_2.txt & 0.0 & 
  & 20.0 & 
 \\
-generated\_7x7\_d0.3\_3.txt & 0.0 & 
- & 20.01 & 
+generated\_7x7\_d0.3\_2.txt & 0.01 & 
+$\times$
+ & 0.88 & 
+$\times$
 \\
-generated\_7x7\_d0.3\_4.txt & 0.01 & 
- & 20.01 & 
+generated\_7x7\_d0.3\_3.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_7x7\_d0.3\_4.txt & 0.02 & 
+$\times$
+ & 20.0 & 
 \\
 generated\_7x7\_d0.3\_5.txt & 0.0 & 
  & 20.0 & 
@@ -984,39 +1043,22 @@ generated\_7x7\_d0.4\_1.txt & 0.0 &
  & 20.0 & 
 \\
 generated\_7x7\_d0.4\_2.txt & 0.0 & 
- & 20.01 & 
+ & 20.0 & 
 \\
 generated\_7x7\_d0.4\_3.txt & 0.0 & 
- & 20.0 & 
+ & 20.01 & 
 \\
 generated\_7x7\_d0.4\_4.txt & 0.0 & 
- & 20.01 & 
+ & 20.0 & 
 \\
-
 generated\_7x7\_d0.4\_5.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.2\_1.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.2\_2.txt & 0.0 & 
  & 20.01 & 
-\\
-generated\_8x8\_d0.2\_1.txt & 0.02 & 
- & 20.0 & 
-\\
-generated\_8x8\_d0.2\_2.txt & 0.01 & 
- & 20.01 & 
-\\
-generated\_8x8\_d0.2\_3.txt & 0.0 & 
- & 20.0 & 
-\\
-generated\_8x8\_d0.2\_4.txt & 0.01 & 
- & 20.0 & 
-\\
-generated\_8x8\_d0.2\_5.txt & 0.02 & 
- & 6.19 & 
-$\times$
-\\
-generated\_8x8\_d0.3\_1.txt & 0.0 & 
- & 20.01 & 
-\\
-generated\_8x8\_d0.3\_2.txt & 0.0 & 
- & 20.0 & 
 \\
 \hline\end{tabular}
 \end{center}
@@ -1029,7 +1071,23 @@ generated\_8x8\_d0.3\_2.txt & 0.0 &
 \hline
 \textbf{Instance} & \textbf{CPLEX t. (s)} & \textbf{CPLEX ok} & \textbf{Heur. t. (s)} & \textbf{Heur. ok} \\
 \hline
-
+generated\_8x8\_d0.2\_3.txt & 0.0 & 
+ & 20.01 & 
+\\
+generated\_8x8\_d0.2\_4.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.2\_5.txt & 0.03 & 
+$\times$
+ & 10.51 & 
+$\times$
+\\
+generated\_8x8\_d0.3\_1.txt & 0.0 & 
+ & 20.0 & 
+\\
+generated\_8x8\_d0.3\_2.txt & 0.0 & 
+ & 20.0 & 
+\\
 generated\_8x8\_d0.3\_3.txt & 0.0 & 
  & 20.0 & 
 \\
@@ -1037,26 +1095,26 @@ generated\_8x8\_d0.3\_4.txt & 0.0 &
  & 20.0 & 
 \\
 generated\_8x8\_d0.3\_5.txt & 0.0 & 
- & 20.01 & 
+ & 20.0 & 
 \\
 generated\_8x8\_d0.4\_1.txt & 0.0 & 
  & 20.0 & 
 \\
 generated\_8x8\_d0.4\_2.txt & 0.0 & 
- & 20.0 & 
+ & 20.01 & 
 \\
 generated\_8x8\_d0.4\_3.txt & 0.0 & 
  & 20.0 & 
 \\
 generated\_8x8\_d0.4\_4.txt & 0.0 & 
- & 20.01 & 
+ & 20.0 & 
 \\
 generated\_8x8\_d0.4\_5.txt & 0.0 & 
  & 20.01 & 
 \\
 instanceTest.txt & 0.0 & 
 $\times$
- & 0.08 & 
+ & 0.54 & 
 $\times$
 \\
 \hline

@@ -65,7 +65,11 @@ function readInputFile(inputFile::String)
             if val == ""   # empty cell
                 grid[i, j] = -1
             else
-                grid[i, j] = parse(Int64, val)
+                parsed = parse(Int64, val)
+                if parsed < 0 || parsed > 3
+                    error("Invalid Loopy instance value ", parsed, ": allowed values are -1, 0, 1, 2, 3.")
+                end
+                grid[i, j] = parsed
             end
         end
     end

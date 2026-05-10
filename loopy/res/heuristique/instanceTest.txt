@@ -11,5 +11,5 @@ v = [
 1 1 0 0 0
 1 0 1 0 0
 ]
-solveTime = 0.07699990272521973
+solveTime = 0.5420000553131104
 isOptimal = true

@@ -9,7 +9,7 @@ function generateInstance(nbRows::Int64, nbCols::Int64, density::Float64)
     for i in 1:nbRows
         for j in 1:nbCols
             if rand() <= density
-                grid[i, j] = rand(0:4)
+                grid[i, j] = rand(0:3)
             end
         end
     end

@@ -1,15 +1,2 @@
-h = [
-1 0 1 0
-0 1 0 1
-1 1 0 1
-0 0 0 1
-0 0 1 1
-]
-v = [
-1 1 1 1 0
-1 0 0 0 1
-0 0 1 1 0
-0 0 1 0 1
-]
-solveTime = 0.0
-isOptimal = true
+solveTime = 20.00600004196167
+isOptimal = false
