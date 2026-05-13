@@ -45,11 +45,22 @@ jobs:
           working_directory: docs/rapport
           work_in_root_file_dir: true
 
+      - name: Compile slides
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: slides.tex
+          working_directory: docs/soutenance
+          work_in_root_file_dir: true
+
       - name: Prepare GitHub Pages site
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           mkdir -p site
-          cp docs/rapport/rapport.pdf site/rapport.pdf
+          BUILD_VERSION="${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          REPORT_FILE="rapport-${BUILD_VERSION}.pdf"
+          SLIDES_FILE="slides-${BUILD_VERSION}.pdf"
+          cp docs/rapport/rapport.pdf "site/${REPORT_FILE}"
+          cp docs/soutenance/slides.pdf "site/${SLIDES_FILE}"
           cat > site/index.html <<'EOF'
           <!doctype html>
           <html lang="es">
@@ -102,6 +113,7 @@ jobs:
               a {
                 display: inline-block;
                 margin-top: 8px;
+                margin-right: 10px;
                 padding: 12px 18px;
                 border-radius: 999px;
                 background: var(--accent);
@@ -118,13 +130,17 @@ jobs:
             <main>
               <h1>Edge Grid Puzzle Solvers Modeling</h1>
               <h2>Projet du Graphes, Jeux et Recherche Opérationnelle, cours ENSTA 2026</h2>
-              <p>Open the generated project report PDF.</p>
-              <a href="./rapport.pdf?v=__REPORT_VERSION__">Open Report</a>
+              <p>Open the generated project PDFs.</p>
+              <a href="./__REPORT_FILE__">Open Report</a>
+              <a href="./__SLIDES_FILE__">Open Slides</a>
             </main>
           </body>
           </html>
           EOF
-          sed -i "s/__REPORT_VERSION__/${GITHUB_SHA}/g" site/index.html
+          sed -i \
+            -e "s/__REPORT_FILE__/${REPORT_FILE}/g" \
+            -e "s/__SLIDES_FILE__/${SLIDES_FILE}/g" \
+            site/index.html
 
       - name: Upload GitHub Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -136,7 +152,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pdf-output
-          path: docs/rapport/rapport.pdf
+          path: |
+            docs/rapport/rapport.pdf
+            docs/soutenance/slides.pdf
 
   deploy_pages:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
