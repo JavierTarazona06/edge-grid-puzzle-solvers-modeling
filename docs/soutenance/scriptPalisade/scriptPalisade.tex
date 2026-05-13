@@ -1,0 +1,53 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{geometry}
+
+\geometry{margin=2.2cm}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\sloppy
+
+\title{Script oral pour la partie Palisade}
+\author{Projet Edge Grid Puzzle Solvers Modeling}
+\date{Mai 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Slide 7 -- Génération des instances}
+
+Pour Palisade, nous ne générons pas les indices au hasard, car cela produit facilement des grilles incohérentes ou sans solution. Nous construisons donc l'instance à l'envers. On commence par créer une grille déjà résolue, c'est-à-dire une partition en régions connexes. La seule condition de départ est que le nombre de régions divise le nombre total de cases. On obtient alors automatiquement la taille de chaque région. Ensuite, un DFS avec backtracking construit les régions une par une, en ajoutant des voisins libres. Une fois la partition obtenue, on calcule les indices en comptant les frontières autour de chaque case, puis on masque une partie des indices avec \texttt{fillRatio}.
+
+\section*{Slide 8 -- Variables et affectation}
+
+Le modèle exact est un PLNE. La variable principale est \(x_{c,p}\), qui vaut 1 si la case \(c\) appartient à la région \(p\). Les variables \(y\) représentent les palissades entre deux cases voisines, et les variables \(z\) servent à linéariser le fait que deux cases adjacentes appartiennent à la même région. Les deux premières contraintes posent la partition : chaque case appartient à une seule région, et chaque région contient exactement \(s\) cases. Le code Julia reprend directement ces contraintes avec JuMP : on déclare les variables binaires, puis on ajoute les sommes sur les régions et sur les cases.
+
+\section*{Slide 9 -- Palissades et indices}
+
+Les variables \(z\) permettent de faire le lien entre affectation et frontières. Si deux cases voisines sont dans la même région, alors la somme des \(z\) vaut 1 et il n'y a pas de palissade entre elles. Sinon, cette somme vaut 0 et la variable \(y\) doit valoir 1. Cela donne la contrainte \(y+\sum z=1\). Pour les cases numérotées, on ajoute les bords extérieurs de la grille, puis les palissades internes autour de la case. Cette somme doit être égale à l'indice affiché. Dans le code, c'est la variable \texttt{expr} qui accumule ces contributions avant la contrainte \texttt{expr == t[i,j]}.
+
+\section*{Slide 10 -- Connexité par flot}
+
+La contrainte difficile est la connexité des régions. Une première formulation possible est une formulation par flot. Pour chaque région, on choisit une racine, puis on impose qu'un flot parte de cette racine vers les autres cases de la région. Les contraintes de capacité empêchent le flot de passer entre deux cases qui ne sont pas toutes les deux dans la région. La conservation du flot garantit que toutes les cases de la région sont atteintes. Cette formulation est exacte, mais elle ajoute beaucoup de variables et de contraintes. Pour garder un modèle initial plus léger, nous avons donc choisi une approche par callback.
+
+\section*{Slide 11 -- Callback de connexité}
+
+Le callback intervient seulement lorsque CPLEX trouve une solution entière candidate. À ce moment-là, on lit les valeurs des variables \(x\), puis on reconstruit chaque région. Si une région possède plusieurs composantes connexes, la solution n'est pas valide. Pour chaque composante isolée \(W\), on ajoute une coupe. Le membre gauche compte les cases de \(W\) affectées à la région. Le membre droit interdit que cette composante reste isolée, sauf si une connexion avec l'extérieur apparaît sur son bord. Cette contrainte est ajoutée comme lazy constraint, ce qui permet d'imposer progressivement la connexité sans charger le modèle dès le départ.
+
+\section*{Slide 12 -- Heuristique}
+
+En parallèle du modèle exact, nous avons aussi une heuristique par backtracking. Elle parcourt la grille ligne par ligne et essaie les identifiants de région possibles. L'intérêt est de couper très tôt les branches impossibles. D'abord, une région ne peut pas dépasser sa taille maximale. Ensuite, pour chaque indice visible proche de la case que l'on vient de placer, on calcule les murs déjà confirmés et les murs encore possibles. Si on a déjà trop de murs, ou si on ne peut plus en obtenir assez, on revient immédiatement en arrière. La connexité complète est vérifiée à la fin, quand toute la grille est affectée.
+
+\section*{Slide 13 -- Résultats expérimentaux}
+
+Le benchmark Palisade contient 21 instances, réparties en 10 familles, avec une limite de 100 secondes. CPLEX résout 18 instances sur 21, alors que l'heuristique en résout 14. Les petites instances sont globalement accessibles aux deux méthodes, mais l'heuristique atteint sa limite dès les familles \(10\times5\). À \(10\times10\), les deux méthodes dépassent la limite de temps. Le point important est que la taille ne suffit pas à expliquer la difficulté : la structure des indices et la forme des régions influencent fortement le temps de résolution.
+
+\section*{Slide 14 -- Problèmes rencontrés et correction}
+
+Le principal problème rencontré venait du callback. Dans une première version, lorsqu'une région était déconnectée, on ajoutait une coupe pour une seule composante, puis on rendait la main à CPLEX. Une solution très déconnectée pouvait donc nécessiter beaucoup d'appels successifs. La correction consiste à parcourir toutes les composantes détectées et à ajouter une coupe pour chacune. Cela donne plus d'information au solveur à chaque appel, tout en conservant une méthode exacte. Sur l'instance \texttt{gen\_10x5\_reg10\_2.txt}, le temps est passé d'environ 687 secondes à environ 15 secondes. Enfin, la limite de 100 secondes permet d'obtenir une campagne expérimentale plus stable.
+
+\end{document}

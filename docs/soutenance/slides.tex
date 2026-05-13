@@ -1,7 +1,8 @@
-\documentclass[10pt,aspectratio=169]{beamer}
+\documentclass[11pt,aspectratio=169]{beamer}
 
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
+\usepackage{lmodern}
 \usepackage[french]{babel}
 \usepackage{graphicx}
 \usepackage{amsmath}
@@ -10,6 +11,10 @@
 \usepackage{array}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{microtype}
+
+\renewcommand{\familydefault}{\sfdefault}
+\linespread{1.04}
 
 \graphicspath{{../rapport/imgs/}{../rapport/imgs/palisade/}}
 
@@ -37,6 +42,12 @@
 \setbeamercolor{title in head/foot}{fg=white,bg=enstaBlue}
 \setbeamerfont{frametitle}{series=\bfseries,size=\large}
 \setbeamerfont{title}{series=\bfseries,size=\LARGE}
+\setbeamerfont{block title}{series=\bfseries,size=\normalsize}
+\setbeamerfont{block body}{size=\small}
+\setbeamerfont{itemize/enumerate body}{size=\small}
+\setbeamerfont{itemize/enumerate subbody}{size=\footnotesize}
+\setlength{\leftmargini}{1.25em}
+\setlength{\leftmarginii}{1em}
 
 \setbeamertemplate{frametitle}{%
   \nointerlineskip%
@@ -59,7 +70,7 @@
 
 \lstdefinestyle{juliacode}{
   backgroundcolor=\color{codeBack},
-  basicstyle=\ttfamily\scriptsize\color{codeText},
+  basicstyle=\ttfamily\fontsize{6.2}{7.2}\selectfont\color{codeText},
   keywordstyle=\bfseries\color{enstaBlueDark},
   commentstyle=\itshape\color{black!55},
   stringstyle=\color{enstaBlue},
@@ -276,20 +287,17 @@ shuffle!(neighborList)
 \end{frame}
 
 \begin{frame}[fragile]{Palisade -- Variables et affectation}
-\small
+\footnotesize
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.48\textwidth}
 \begin{block}{Variables}
 \[
-\begin{gathered}
-x_{c,p}\in\binary,\qquad y_{uv}\in\binary\\
-z_{uv,p}\in\binary
-\end{gathered}
+x_{c,p},\;y_{uv},\;z_{uv,p}\in\binary
 \]
 \begin{itemize}
-  \item \(x_{c,p}=1\) si la case \(c\) appartient à la région \(p\).
-  \item \(y_{uv}=1\) si une palissade sépare \(u\) et \(v\).
-  \item \(z_{uv,p}=1\) si deux cases voisines sont dans la même région \(p\).
+  \item \(x\) : affectation case--région.
+  \item \(y\) : palissade entre deux voisines.
+  \item \(z\) : deux voisines dans une même région.
 \end{itemize}
 \end{block}
 \begin{block}{Contraintes de base}
@@ -300,7 +308,7 @@ z_{uv,p}\in\binary
 \end{block}
 \end{column}
 \begin{column}{0.49\textwidth}
-\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+\begin{lstlisting}[basicstyle=\ttfamily\fontsize{5.4}{6.1}\selectfont]
 @variable(m, x[1:nbRows, 1:nbCols, 1:nbRegions], Bin)
 @variable(m, yh[1:nbRows-1, 1:nbCols], Bin)
 @variable(m, yv[1:nbRows, 1:nbCols-1], Bin)
@@ -308,13 +316,12 @@ z_{uv,p}\in\binary
 @variable(m, zv[1:nbRows, 1:nbCols-1, 1:nbRegions], Bin)
 
 for i in 1:nbRows, j in 1:nbCols
-    @constraint(m, sum(x[i, j, p]
-        for p in 1:nbRegions) == 1)
+    @constraint(m, sum(x[i,j,p] for p in 1:nbRegions) == 1)
 end
 
 for p in 1:nbRegions
-    @constraint(m, sum(x[i, j, p]
-        for i in 1:nbRows, j in 1:nbCols) == regionSize)
+    @constraint(m, sum(x[i,j,p] for i in 1:nbRows,
+        j in 1:nbCols) == regionSize)
 end
 \end{lstlisting}
 \end{column}
@@ -394,7 +401,7 @@ f^p_{uv}\le (s-1)x_{v,p}
 \end{frame}
 
 \begin{frame}[fragile]{Palisade -- Callback de connexité}
-\small
+\footnotesize
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.47\textwidth}
 \begin{block}{Coupe ajoutée dynamiquement}
@@ -410,30 +417,21 @@ Pour une composante stricte \(W\) d'une région déconnectée :
 \end{itemize}
 \end{column}
 \begin{column}{0.5\textwidth}
-\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+\begin{lstlisting}[basicstyle=\ttfamily\fontsize{5.0}{5.7}\selectfont]
 x_val = callback_value.(cb_data, x)
 
 for p in 1:nbRegions
     cells = [(i, j) for i in 1:nbRows, j in 1:nbCols
         if x_val[i, j, p] > 0.9]
-
     components = connectedComponents(cells, nbRows, nbCols)
 
     if length(components) > 1
         for W in components
             Wset = Set(W)
             borderTerms = Any[]
-            for (i, j) in W
-                if i > 1 && !((i-1, j) in Wset)
-                    push!(borderTerms, zh[i-1, j, p])
-                end
-                if j < nbCols && !((i, j+1) in Wset)
-                    push!(borderTerms, zv[i, j, p])
-                end
-            end
+            # push zh/zv terms on the border B(W)
             leftSide = sum(x[i, j, p] for (i, j) in W)
-            rightSide = length(W) - 1
-            rightSide += sum(borderTerms)
+            rightSide = length(W) - 1 + sum(borderTerms)
             cstr = @build_constraint(leftSide <= rightSide)
             MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
         end
