@@ -1,0 +1,575 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\graphicspath{{../rapport/imgs/}{../rapport/imgs/palisade/}}
+
+\definecolor{enstaBlueDark}{HTML}{003366}
+\definecolor{enstaBlue}{HTML}{0073CF}
+\definecolor{enstaBlueLight}{HTML}{EAF4FC}
+\definecolor{codeBack}{HTML}{F7FBFF}
+\definecolor{codeFrame}{HTML}{A9CBE8}
+\definecolor{codeText}{HTML}{1F2933}
+
+\usetheme{default}
+\usefonttheme{professionalfonts}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize item}{\color{enstaBlue}$\blacktriangleright$}
+\setbeamertemplate{itemize subitem}{\color{enstaBlue}$\circ$}
+\setbeamercolor{normal text}{fg=black,bg=white}
+\setbeamercolor{frametitle}{fg=white,bg=enstaBlueDark}
+\setbeamercolor{title}{fg=enstaBlueDark}
+\setbeamercolor{subtitle}{fg=enstaBlue}
+\setbeamercolor{author}{fg=black}
+\setbeamercolor{date}{fg=black}
+\setbeamercolor{block title}{fg=white,bg=enstaBlueDark}
+\setbeamercolor{block body}{fg=black,bg=enstaBlueLight}
+\setbeamercolor{author in head/foot}{fg=white,bg=enstaBlueDark}
+\setbeamercolor{title in head/foot}{fg=white,bg=enstaBlue}
+\setbeamerfont{frametitle}{series=\bfseries,size=\large}
+\setbeamerfont{title}{series=\bfseries,size=\LARGE}
+
+\setbeamertemplate{frametitle}{%
+  \nointerlineskip%
+  \begin{beamercolorbox}[wd=\paperwidth,ht=2.7ex,dp=1.1ex,leftskip=1.3em]{frametitle}
+    \usebeamerfont{frametitle}\insertframetitle
+  \end{beamercolorbox}%
+}
+
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.72\paperwidth,ht=2.4ex,dp=1ex,leftskip=1.3em]{author in head/foot}%
+      \insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.28\paperwidth,ht=2.4ex,dp=1ex,rightskip=1.3em plus 1fil]{title in head/foot}%
+      \hfill \insertsectionhead \hspace{1em} \insertframenumber/\inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
+}
+
+\lstdefinestyle{juliacode}{
+  backgroundcolor=\color{codeBack},
+  basicstyle=\ttfamily\scriptsize\color{codeText},
+  keywordstyle=\bfseries\color{enstaBlueDark},
+  commentstyle=\itshape\color{black!55},
+  stringstyle=\color{enstaBlue},
+  frame=single,
+  rulecolor=\color{codeFrame},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  breaklines=true,
+  tabsize=2,
+  morekeywords={function,for,if,else,elseif,end,return,while,in,begin,true,false,nothing}
+}
+\lstset{style=juliacode}
+
+\newcommand{\CellSet}{\mathcal{C}}
+\newcommand{\AdjSet}{\mathcal{A}}
+\newcommand{\RegSet}{\mathcal{P}}
+\newcommand{\ClueSet}{\mathcal{Q}}
+\newcommand{\binary}{\{0,1\}}
+
+\title[Edge Grid Puzzle Solvers Modeling]{Edge Grid Puzzle Solvers Modeling}
+\subtitle{Projet de Graphes, Jeux et Recherche Opérationnelle}
+\author{Javier Andres TARAZONA \and Carlos Adrian MENESES \and Shebli RAKKA}
+\institute{ENSTA Paris -- Majeure STIC\\Encadrants : Zacharie ALES et Dylan LAPLACE}
+\date{Mai 2026}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+  \vspace{-0.7cm}
+  \begin{center}
+    \includegraphics[width=0.34\textwidth]{logo_ensta_2025.jpg}
+  \end{center}
+\end{frame}
+
+\section{Loopy}
+
+\begin{frame}{Loopy -- Génération des instances}
+\small
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.52\textwidth}
+\begin{block}{Instances}
+\begin{itemize}
+  \item Grilles rectangulaires de tailles variables : \(n \times m\).
+  \item Choix d'une densité \(d\) :
+  \[
+  d=\frac{\text{nombre de cases indicées}}{\text{nombre total de cases}}
+  \]
+  \item Les autres cases restent vides et n'imposent pas de contrainte directe.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.43\textwidth}
+\begin{block}{Indices}
+\[
+a_p \in \{0,1,2,3\}
+\]
+\begin{itemize}
+  \item Les cases choisies reçoivent une valeur.
+  \item Objectif : tester le modèle sur plusieurs niveaux de difficulté.
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Loopy -- Modélisation PLNE}
+\small
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.47\textwidth}
+\begin{block}{Variable de décision}
+Pour chaque arête \(e\in\mathcal{E}\) :
+\[
+x_e =
+\begin{cases}
+1 & \text{si l'arête } e \text{ est sélectionnée,}\\
+0 & \text{sinon.}
+\end{cases}
+\]
+\[
+\min 0
+\]
+\end{block}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{block}{Contraintes}
+Cases numérotées :
+\[
+\sum_{e\in\mathcal{E}(p)}x_e=a_p
+\qquad \forall p\in\mathcal{S}
+\]
+Sommets :
+\[
+\sum_{e\in\delta(v)}x_e\in\{0,2\}
+\qquad \forall v\in\mathcal{V}
+\]
+\end{block}
+Ces contraintes évitent les extrémités libres et les branchements.
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Loopy -- Callback : unicité de la boucle}
+\small
+\begin{block}{Contraintes locales}
+\[
+\sum_{e\in\delta(v)}x_e\in\{0,2\}
+\]
+Mais elles peuvent autoriser plusieurs cycles séparés.
+\end{block}
+
+\begin{itemize}
+  \item Règle globale du jeu : les arêtes sélectionnées doivent former une seule composante connexe.
+  \item Le callback teste chaque solution entière trouvée par CPLEX.
+  \item Si plusieurs boucles sont détectées, on ajoute une contrainte d'exclusion.
+  \item Le callback permet donc d'imposer progressivement l'unicité de la boucle.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Loopy -- Méthode heuristique}
+\small
+\begin{block}{Objectif}
+Obtenir rapidement une solution approchée.
+\end{block}
+
+Chaque configuration est évaluée par une fonction de score :
+\[
+\text{score}=\text{pénalité}_{\text{cases}}+\text{pénalité}_{\text{sommets}}
+\]
+
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Pénalité sur les cases}
+\[
+\sum_{e\in\mathcal{E}(p)}x_e-a_p
+\]
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Pénalité sur les sommets si}
+\[
+\sum_{e\in\delta(v)}x_e\notin\{0,2\}
+\]
+\end{block}
+\end{column}
+\end{columns}
+
+\medskip
+L'heuristique cherche à minimiser ce score.
+\end{frame}
+
+\begin{frame}{Loopy -- Résultats expérimentaux}
+\small
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Tests réalisés}
+\begin{itemize}
+  \item 75 instances.
+  \item Tailles : \(4\times4\) à \(8\times8\).
+  \item Densités : \(d\in\{0.2,0.3,0.4\}\).
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Résolution}
+\begin{itemize}
+  \item CPLEX avec callback : \(25/75=33{,}3\,\%\).
+  \item Heuristique : \(24/75=32\,\%\).
+  \item CPLEX est plus rapide, avec un temps moyen très faible.
+  \item Les instances \(8\times8\) sont les plus difficiles : \(1/15\) résolue par chaque méthode.
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\section{Palisade}
+
+\begin{frame}[fragile]{Palisade -- Génération des instances}
+\small
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.47\textwidth}
+\begin{block}{Principe}
+\begin{itemize}
+  \item Condition : \(k \mid (n \times m)\).
+  \item Taille des régions : \(s = \frac{n \times m}{k}\).
+  \item Génération d'une partition résolue par DFS avec backtracking.
+  \item Calcul des indices à partir des frontières, puis masquage avec \texttt{fillRatio}.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+if (n * m) % k != 0
+    error("The board ... cannot be divided")
+end
+
+regionSize = div(n * m, k)
+regionMap = createRandomRegions(n, m, k, regionSize)
+
+if i == 1 || regionMap[i, j] != regionMap[i-1, j]
+    walls += 1
+end
+
+if rand() <= fillRatio
+    puzzleGrid[i, j] = cluesGrid[i, j]
+end
+
+shuffle!(neighborList)
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Palisade -- Variables et affectation}
+\small
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Variables}
+\[
+\begin{gathered}
+x_{c,p}\in\binary,\qquad y_{uv}\in\binary\\
+z_{uv,p}\in\binary
+\end{gathered}
+\]
+\begin{itemize}
+  \item \(x_{c,p}=1\) si la case \(c\) appartient à la région \(p\).
+  \item \(y_{uv}=1\) si une palissade sépare \(u\) et \(v\).
+  \item \(z_{uv,p}=1\) si deux cases voisines sont dans la même région \(p\).
+\end{itemize}
+\end{block}
+\begin{block}{Contraintes de base}
+\[
+\sum_{p\in\RegSet}x_{c,p}=1,\quad
+\sum_{c\in\CellSet}x_{c,p}=s
+\]
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+@variable(m, x[1:nbRows, 1:nbCols, 1:nbRegions], Bin)
+@variable(m, yh[1:nbRows-1, 1:nbCols], Bin)
+@variable(m, yv[1:nbRows, 1:nbCols-1], Bin)
+@variable(m, zh[1:nbRows-1, 1:nbCols, 1:nbRegions], Bin)
+@variable(m, zv[1:nbRows, 1:nbCols-1, 1:nbRegions], Bin)
+
+for i in 1:nbRows, j in 1:nbCols
+    @constraint(m, sum(x[i, j, p]
+        for p in 1:nbRegions) == 1)
+end
+
+for p in 1:nbRegions
+    @constraint(m, sum(x[i, j, p]
+        for i in 1:nbRows, j in 1:nbCols) == regionSize)
+end
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Palisade -- Palissades et indices}
+\small
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Lien entre régions et palissades}
+\[
+\begin{aligned}
+z_{uv,p} &\le x_{u,p}\\
+z_{uv,p} &\le x_{v,p}\\
+z_{uv,p} &\ge x_{u,p}+x_{v,p}-1\\
+y_{uv}+\sum_{p\in\RegSet}z_{uv,p} &= 1
+\end{aligned}
+\]
+\end{block}
+\begin{block}{Respect des indices}
+\[
+\delta_c+\sum_{v\in N(c)}y_{cv}=a_c
+\qquad \forall c\in\ClueSet
+\]
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+@constraint(m, zh[i, j, p] <= x[i, j, p])
+@constraint(m, zh[i, j, p] <= x[i+1, j, p])
+@constraint(m, zh[i, j, p] >=
+    x[i, j, p] + x[i+1, j, p] - 1)
+
+@constraint(m, yh[i, j] +
+    sum(zh[i, j, p] for p in 1:nbRegions) == 1)
+
+expr = borderCount
+if i > 1
+    expr += yh[i-1, j]
+end
+if j < nbCols
+    expr += yv[i, j]
+end
+
+@constraint(m, expr == t[i, j])
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Palisade -- Connexité par flot}
+\small
+\begin{block}{Formulation exacte possible}
+Pour imposer la connexité d'une région \(p\), on choisit une racine et on fait circuler un flot vers les autres cases de la région.
+\[
+r_{c,p}\in\binary,\qquad f^p_{uv}\ge 0
+\]
+\[
+\sum_{c\in\CellSet}r_{c,p}=1,\qquad
+r_{c,p}\le x_{c,p}
+\]
+\[
+f^p_{uv}\le (s-1)x_{u,p},\qquad
+f^p_{uv}\le (s-1)x_{v,p}
+\]
+\[
+\sum_{u:(u,c)} f^p_{uc}-\sum_{v:(c,v)} f^p_{cv}
+=x_{c,p}-s\,r_{c,p}
+\]
+\end{block}
+\vspace{-0.1cm}
+\begin{itemize}
+  \item Cette formulation impose exactement la connexité.
+  \item Elle ajoute beaucoup de variables et contraintes ; le modèle final utilise donc un callback de connexité.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Palisade -- Callback de connexité}
+\small
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.47\textwidth}
+\begin{block}{Coupe ajoutée dynamiquement}
+Pour une composante stricte \(W\) d'une région déconnectée :
+\[
+\sum_{c\in W}x_{c,p}
+\le |W|-1+\sum_{\{u,v\}\in B(W)}z_{uv,p}
+\]
+\end{block}
+\begin{itemize}
+  \item Le callback agit uniquement sur les solutions entières candidates.
+  \item Chaque composante isolée produit une lazy constraint valide.
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+x_val = callback_value.(cb_data, x)
+
+for p in 1:nbRegions
+    cells = [(i, j) for i in 1:nbRows, j in 1:nbCols
+        if x_val[i, j, p] > 0.9]
+
+    components = connectedComponents(cells, nbRows, nbCols)
+
+    if length(components) > 1
+        for W in components
+            Wset = Set(W)
+            borderTerms = Any[]
+            for (i, j) in W
+                if i > 1 && !((i-1, j) in Wset)
+                    push!(borderTerms, zh[i-1, j, p])
+                end
+                if j < nbCols && !((i, j+1) in Wset)
+                    push!(borderTerms, zv[i, j, p])
+                end
+            end
+            leftSide = sum(x[i, j, p] for (i, j) in W)
+            rightSide = length(W) - 1
+            rightSide += sum(borderTerms)
+            cstr = @build_constraint(leftSide <= rightSide)
+            MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
+        end
+    end
+end
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Palisade -- Heuristique}
+\small
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.45\textwidth}
+\begin{block}{Recherche récursive}
+\begin{itemize}
+  \item DFS ligne par ligne, colonne par colonne.
+  \item Essai des régions \(1,\dots,k\) pour chaque case.
+  \item Coupe immédiate si une région dépasse \texttt{regionSize}.
+  \item Pour chaque indice visible :
+  \[
+  \begin{aligned}
+  \texttt{confirmedWalls}&\le a_c\\
+  a_c&\le \texttt{potentialWalls}
+  \end{aligned}
+  \]
+  \item Connexité complète vérifiée à la fin.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+if count(==(regionId), grid) >= regionSize
+    return false
+end
+
+if confirmedWalls > clues[i, j]
+    isValid = false
+end
+if potentialWalls < clues[i, j]
+    isValid = false
+end
+
+for regionId in 1:k
+    if isValidMove(grid, clues, row, col,
+                   regionId, regionSize)
+        grid[row, col] = regionId
+        result = backtrackSolve!(grid, clues, n, m, k,
+            regionSize, row, col + 1, deadline)
+    end
+end
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Palisade -- Résultats expérimentaux}
+\small
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.45\textwidth}
+\begin{block}{Protocole}
+\begin{itemize}
+  \item 21 instances générées, réparties en 10 familles.
+  \item Limite de temps : 100 secondes.
+  \item CPLEX : 18/21 instances résolues.
+  \item Heuristique : 14/21 instances résolues.
+\end{itemize}
+\end{block}
+\vspace{-0.15cm}
+{\scriptsize
+\begin{tabular}{lccc}
+\toprule
+Famille & \(N\) & CPLEX & Heur.\\
+\midrule
+\texttt{5x5 r5} & 25 & 2/2 & 2/2\\
+\texttt{6x6 r12} & 36 & 2/2 & 1/2\\
+\texttt{8x5 r8} & 40 & 2/2 & 1/2\\
+\texttt{10x5 r10} & 50 & 2/2 & 0/2\\
+\texttt{10x10 r20} & 100 & 0/3 & 0/3\\
+\bottomrule
+\end{tabular}
+}
+\end{column}
+\begin{column}{0.52\textwidth}
+\includegraphics[width=\textwidth]{palisade_performance_diagram.pdf}
+\vspace{-0.15cm}
+\begin{itemize}
+  \item Les timeouts heuristiques commencent à \(10\times5\).
+  \item À \(10\times10\), les deux méthodes dépassent la limite fixée.
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Palisade -- Problèmes rencontrés et correction}
+\small
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Callback trop peu informatif}
+\begin{itemize}
+  \item Première version : une seule composante coupée par appel.
+  \item Correction : ajouter une coupe pour chaque composante détectée.
+  \item \texttt{gen\_10x5\_reg10\_2.txt} : environ \(687.28\,s\) avant, environ \(15.15\,s\) après correction.
+  \item Une limite \texttt{MOI.TimeLimitSec()} à 100 s stabilise la campagne expérimentale.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+# Avant
+if length(components) > 1
+    W = components[1]
+    MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
+    return
+end
+
+# Apres
+if length(components) > 1
+    for W in components
+        cstr = @build_constraint(leftSide <= rightSide)
+        MOI.submit(m, MOI.LazyConstraint(cb_data), cstr)
+    end
+end
+
+MOI.set(m, MOI.TimeLimitSec(), timeLimit)
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\section{}
+
+\begin{frame}
+\begin{center}
+{\LARGE\bfseries\color{enstaBlueDark} Merci pour votre attention}
+\end{center}
+\end{frame}
+
+\end{document}
